@@ -6,57 +6,73 @@
 
 html, body {
   width: 100%;
-  height: 100%;
-  background-color: #0f172a; /* チケットが引き立つダーク背景 */
+  min-height: 100%;
+  background-color: #0b0f19;
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #ticket-wrapper {
   width: 100%;
-  max-width: 480px;
+  max-width: 460px;
   padding: 16px;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-/* 最終的に画面に表示される唯一の画像要素 */
+/* 画面に唯一残る画像要素 */
 #ticket-wrapper img {
   width: 100%;
   height: auto;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
   display: block;
-  user-select: auto;
-  -webkit-user-select: auto; /* 長押し保存可能 */
+  user-select: auto !important;
+  -webkit-user-select: auto !important;
+  -webkit-touch-callout: default !important; /* iOSで長押しメニューを強制許可 */
+  pointer-events: auto !important;
+}
+
+/* 一時QRコード要素（非表示かつレイアウト計算を成立させる） */
+.offscreen-qr {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  width: 256px;
+  height: 256px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* ローディング画面 */
 .loader {
   position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: #0f172a;
-  color: #fff;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #0b0f19;
+  color: #f8fafc;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  font-family: sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   z-index: 999;
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(255,255,255,0.2);
+  width: 44px;
+  height: 44px;
+  border: 4px solid rgba(255, 255, 255, 0.15);
   border-top-color: #38bdf8;
   border-radius: 50%;
-  animation: spin 1s infinite linear;
-  margin-bottom: 12px;
+  animation: spin 0.8s infinite linear;
+  margin-bottom: 16px;
 }
 
 @keyframes spin {

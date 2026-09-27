@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
-  <title>整理券チケット</title>
+  <title>入場整理券</title>
   <link rel="stylesheet" href="ticket.css">
 
   <!-- Firebase SDK (v10 compat) -->
@@ -15,17 +15,17 @@
   <script src="firebase-config.js"></script>
 </head>
 <body>
-  <!-- 初期ローディング表示（画像生成完了時にDOMから完全削除されます） -->
+  <!-- 初期ローディング画面（画像描画完了時にDOMから完全削除） -->
   <div id="loader" class="loader">
     <div class="spinner"></div>
     <p>整理券画像を生成中...</p>
   </div>
 
-  <!-- チケット画像表示コンテナ：最終的にこの中に <img> のみが挿入されます -->
+  <!-- チケット画像コンテナ：最終的にこの中に <img> のみが挿入される -->
   <div id="ticket-wrapper"></div>
 
-  <!-- 一時QRコード生成用（オフスクリーン・非表示） -->
-  <div id="temp-qrcode" style="display:none;"></div>
+  <!-- オフスクリーンQR生成領域（画面外配置で描画計算を正常動作させる） -->
+  <div id="temp-qrcode" class="offscreen-qr"></div>
 
   <script src="ticket.js"></script>
 </body>

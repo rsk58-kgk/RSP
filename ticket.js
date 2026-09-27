@@ -5,168 +5,257 @@ document.addEventListener("DOMContentLoaded", async () => {
   const wrapper = document.getElementById("ticket-wrapper");
 
   if (!ticketId) {
-    showError("予約IDが指定されていません。");
+    renderAndDisplayErrorImage("エラー: 予約IDが指定されていません。");
     return;
   }
 
   try {
-    // 1. Firestoreからチケット情報を取得
+    // 1. Firestoreから予約データを取得
     const doc = await db.collection("reservations").doc(ticketId).get();
     if (!doc.exists) {
-      showError("予約情報が見つかりませんでした。");
+      renderAndDisplayErrorImage("エラー: 該当する予約情報が存在しません。");
       return;
     }
+
     const data = doc.data();
-
-    // 2. 受付用QRコード（ドキュメントIDそのもの）を一時生成
-    const qrCanvas = await generateTempQRCode(ticketId);
-
-    // 3. チケット画像をCanvasで動的描画
-    const ticketImageBase64 = createTicketCanvas(data, qrCanvas, ticketId);
-
-    // 4. 生成したPNGを唯一の <img> タグとしてDOMに注入
-    const img = document.createElement("img");
-    img.src = ticketImageBase64;
-    img.alt = "入場整理券";
-    wrapper.appendChild(img);
-
-    // 5. ローダーを削除（テキストDOM要素を完全排除）
-    if (loader && loader.parentNode) {
-      loader.parentNode.removeChild(loader);
+    if (data.status === "cancelled") {
+      renderAndDisplayErrorImage("この整理券はキャンセルされています。");
+      return;
     }
+
+    // 2. 受付用QRコードの非同期生成待機
+    const qrSourceElement = await generateQRCodeAsync(ticketId);
+
+    // 3. Canvasによるチケット画像の合成
+    const ticketDataUrl = createTicketCanvas(data, qrSourceElement, ticketId);
+
+    // 4. 画像DOMの配置とローダー完全消去
+    displayFinalImage(ticketDataUrl, "入場整理券");
   } catch (err) {
-    showError("整理券の生成に失敗しました: " + err.message);
+    console.error(err);
+    renderAndDisplayErrorImage("システムエラーが発生しました。\nスタッフにお声がけください。");
   }
 
-  // オフスクリーンQRコード生成
-  function generateTempQRCode(text) {
-    return new Promise((resolve) => {
-      const tempDiv = document.getElementById("temp-qrcode");
-      tempDiv.innerHTML = "";
-      new QRCode(tempDiv, {
+  /**
+   * QRCode.jsの完了を確実に待機する堅牢なPromise
+   */
+  function generateQRCodeAsync(text) {
+    return new Promise((resolve, reject) => {
+      const tempContainer = document.getElementById("temp-qrcode");
+      tempContainer.innerHTML = "";
+
+      const timeoutId = setTimeout(() => {
+        observer.disconnect();
+        reject(new Error("QRコードの生成がタイムアウトしました。"));
+      }, 5000);
+
+      const observer = new MutationObserver(() => {
+        const canvas = tempContainer.querySelector("canvas");
+        const img = tempContainer.querySelector("img");
+
+        if (canvas) {
+          clearTimeout(timeoutId);
+          observer.disconnect();
+          resolve(canvas);
+        } else if (img) {
+          if (img.complete && img.naturalWidth > 0) {
+            clearTimeout(timeoutId);
+            observer.disconnect();
+            resolve(img);
+          } else {
+            img.onload = () => {
+              clearTimeout(timeoutId);
+              observer.disconnect();
+              resolve(img);
+            };
+            img.onerror = () => {
+              clearTimeout(timeoutId);
+              observer.disconnect();
+              reject(new Error("QR画像の読み込みに失敗しました。"));
+            };
+          }
+        }
+      });
+
+      observer.observe(tempContainer, { childList: true, subtree: true });
+
+      new QRCode(tempContainer, {
         text: text,
-        width: 180,
-        height: 180,
+        width: 256,
+        height: 256,
         correctLevel: QRCode.CorrectLevel.H
       });
-      // QRCode.jsがcanvasまたはimgを出力するのを待つ
-      setTimeout(() => {
-        const qrEl = tempDiv.querySelector("canvas") || tempDiv.querySelector("img");
-        resolve(qrEl);
-      }, 100);
     });
   }
 
-  // Canvasによるチケット画像描画処理（縦長・高解像度 750x1200）
+  /**
+   * チケット画像（Canvas合成）の生成
+   */
   function createTicketCanvas(data, qrElement, id) {
     const canvas = document.createElement("canvas");
     canvas.width = 750;
-    canvas.height = 1200;
+    canvas.height = 1250;
     const ctx = canvas.getContext("2d");
 
-    // 背景（グラデーション）
+    // 全体背景
     const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
     bgGradient.addColorStop(0, "#ffffff");
-    bgGradient.addColorStop(1, "#f1f5f9");
+    bgGradient.addColorStop(1, "#f8fafc");
     ctx.fillStyle = bgGradient;
-    roundRect(ctx, 0, 0, canvas.width, canvas.height, 30, true);
+    roundRect(ctx, 0, 0, canvas.width, canvas.height, 36, true, false);
 
-    // ヘッダー装飾帯
-    ctx.fillStyle = "#1e3a8a";
-    roundRectCustomTop(ctx, 0, 0, canvas.width, 160, 30);
+    // ヘッダーバナー
+    const headerGradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+    headerGradient.addColorStop(0, "#1e3a8a");
+    headerGradient.addColorStop(1, "#2563eb");
+    ctx.fillStyle = headerGradient;
+    roundRectCustomTop(ctx, 0, 0, canvas.width, 160, 36);
 
-    // クラス名・企画ロゴテキスト
+    // クラス名・タイトル描画
     ctx.fillStyle = "#93c5fd";
-    ctx.font = "bold 28px sans-serif";
+    ctx.font = "bold 26px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("2年4組 文化祭企画", canvas.width / 2, 60);
+    ctx.fillText(APP_CONFIG.className || "2年4組", canvas.width / 2, 58);
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 44px sans-serif";
-    ctx.fillText(APP_CONFIG.title.replace("2年4組 ", ""), canvas.width / 2, 120);
+    ctx.font = "bold 42px sans-serif";
+    ctx.fillText(APP_CONFIG.attractionName || "文化祭アトラクション", canvas.width / 2, 118);
 
-    // チケット種別バッジ
-    ctx.fillStyle = "#e0e7ff";
-    roundRect(ctx, canvas.width / 2 - 120, 190, 240, 46, 23, true);
-    ctx.fillStyle = "#3730a3";
-    ctx.font = "bold 24px sans-serif";
-    ctx.fillText("入場整理券", canvas.width / 2, 222);
+    // バッジ
+    ctx.fillStyle = "#dbeafe";
+    roundRect(ctx, canvas.width / 2 - 110, 190, 220, 44, 22, true, false);
+    ctx.fillStyle = "#1e40af";
+    ctx.font = "bold 22px sans-serif";
+    ctx.fillText("入場整理券", canvas.width / 2, 220);
 
-    // 予約枠（時間帯）ブロック
+    // 時間枠ブロック
     ctx.fillStyle = "#eff6ff";
-    roundRect(ctx, 50, 260, 650, 130, 16, true);
+    roundRect(ctx, 50, 260, 650, 136, 18, true, false);
     ctx.strokeStyle = "#bfdbfe";
     ctx.lineWidth = 2;
-    roundRect(ctx, 50, 260, 650, 130, 16, false, true);
+    roundRect(ctx, 50, 260, 650, 136, 18, false, true);
 
     ctx.fillStyle = "#1e40af";
-    ctx.font = "bold 26px sans-serif";
+    ctx.font = "bold 24px sans-serif";
     ctx.fillText("ご案内時間", canvas.width / 2, 298);
 
-    ctx.fillStyle = "#dc2626"; // 時間枠は大きく赤系で視認性を高く
+    ctx.fillStyle = "#dc2626";
     ctx.font = "bold 52px sans-serif";
-    ctx.fillText(data.timeSlot, canvas.width / 2, 360);
+    ctx.fillText(data.timeSlot, canvas.width / 2, 364);
 
-    // グループ名 & 人数
-    ctx.fillStyle = "#334155";
-    ctx.font = "bold 28px sans-serif";
-    ctx.fillText("代表者 / 人数", canvas.width / 2, 435);
+    // 代表者名 & 人数
+    ctx.fillStyle = "#475569";
+    ctx.font = "bold 26px sans-serif";
+    ctx.fillText("グループ名 / 人数", canvas.width / 2, 440);
 
     ctx.fillStyle = "#0f172a";
-    ctx.font = "bold 42px sans-serif";
-    ctx.fillText(`${data.groupName} 様`, canvas.width / 2, 485);
+    ctx.font = "bold 44px sans-serif";
+    const displayName = data.groupName.length > 12 ? data.groupName.substring(0, 11) + "…" : data.groupName;
+    ctx.fillText(`${displayName} 様`, canvas.width / 2, 495);
 
     ctx.fillStyle = "#2563eb";
-    ctx.font = "bold 34px sans-serif";
-    ctx.fillText(`参加人数：${data.count} 名`, canvas.width / 2, 535);
+    ctx.font = "bold 32px sans-serif";
+    ctx.fillText(`ご参加人数：${data.count} 名`, canvas.width / 2, 545);
 
-    // 切り取り線風の破線
+    // チケット切り取り破線
     ctx.strokeStyle = "#cbd5e1";
     ctx.lineWidth = 3;
     ctx.setLineDash([12, 8]);
     ctx.beginPath();
-    ctx.moveTo(40, 580);
-    ctx.lineTo(710, 580);
+    ctx.moveTo(40, 595);
+    ctx.lineTo(710, 595);
     ctx.stroke();
-    ctx.setLineDash([]); // 破線解除
+    ctx.setLineDash([]);
 
-    // 受付用QRコードの描画枠
+    // QR枠
     ctx.fillStyle = "#ffffff";
-    roundRect(ctx, 235, 620, 280, 280, 16, true);
-    ctx.strokeStyle = "#cbd5e1";
+    roundRect(ctx, 235, 630, 280, 280, 18, true, false);
+    ctx.strokeStyle = "#e2e8f0";
     ctx.lineWidth = 2;
-    roundRect(ctx, 235, 620, 280, 280, 16, false, true);
+    roundRect(ctx, 235, 630, 280, 280, 18, false, true);
 
-    // QR本体を描画
+    // QRコード転写
     if (qrElement) {
-      ctx.drawImage(qrElement, 255, 640, 240, 240);
+      ctx.drawImage(qrElement, 255, 650, 240, 240);
     }
 
     ctx.fillStyle = "#64748b";
-    ctx.font = "20px monospace";
-    ctx.fillText(`ID: ${id}`, canvas.width / 2, 930);
+    ctx.font = "18px monospace";
+    ctx.fillText(`ID: ${id}`, canvas.width / 2, 940);
 
     ctx.fillStyle = "#0f172a";
     ctx.font = "bold 26px sans-serif";
-    ctx.fillText("【受付時にこのQRコードをご提示ください】", canvas.width / 2, 975);
+    ctx.fillText("【受付時にこのQRをご提示ください】", canvas.width / 2, 985);
 
-    // 注意事項エリア
-    ctx.fillStyle = "#f8fafc";
-    roundRect(ctx, 50, 1010, 650, 150, 12, true);
+    // 注意事項
+    ctx.fillStyle = "#f1f5f9";
+    roundRect(ctx, 50, 1025, 650, 180, 16, true, false);
 
-    ctx.fillStyle = "#475569";
+    ctx.fillStyle = "#334155";
     ctx.font = "bold 22px sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText("※ 注意事項", 75, 1045);
+    ctx.fillText("■ ご来場時の注意点", 75, 1065);
     ctx.font = "20px sans-serif";
-    ctx.fillText("・指定時間の5分前までに2年4組教室前にお越しください。", 75, 1080);
-    ctx.fillText("・画面を長押しして画像をスマホに保存しておくと安心です。", 75, 1112);
-    ctx.fillText("・時間を過ぎた場合はキャンセル扱いとなる場合があります。", 75, 1144);
+    ctx.fillStyle = "#475569";
+    ctx.fillText("・時間の5分前までに2年4組前へお越しください。", 75, 1105);
+    ctx.fillText("・通信不良に備え、画像を長押しして保存してください。", 75, 1140);
+    ctx.fillText("・時間を大幅に過ぎた場合は無効となる場合があります。", 75, 1175);
 
     return canvas.toDataURL("image/png");
   }
 
-  // 角丸矩形描画ヘルパー
+  /**
+   * エラー時もテキストDOMを残さずCanvas画像で表示する関数
+   */
+  function renderAndDisplayErrorImage(errorMessage) {
+    const canvas = document.createElement("canvas");
+    canvas.width = 750;
+    canvas.height = 600;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#ffffff";
+    roundRect(ctx, 0, 0, canvas.width, canvas.height, 36, true, false);
+
+    ctx.fillStyle = "#dc2626";
+    roundRectCustomTop(ctx, 0, 0, canvas.width, 130, 36);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 40px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("整理券 読み込みエラー", canvas.width / 2, 82);
+
+    ctx.fillStyle = "#1e293b";
+    ctx.font = "bold 30px sans-serif";
+    const lines = errorMessage.split("\n");
+    let startY = 250;
+    lines.forEach(line => {
+      ctx.fillText(line, canvas.width / 2, startY);
+      startY += 50;
+    });
+
+    ctx.fillStyle = "#64748b";
+    ctx.font = "22px sans-serif";
+    ctx.fillText("スタッフへ直接お問い合わせください。", canvas.width / 2, 480);
+
+    displayFinalImage(canvas.toDataURL("image/png"), "エラー通知");
+  }
+
+  /**
+   * 最終的な<img>のみを配置してローダーを排除する処理
+   */
+  function displayFinalImage(dataUrl, altText) {
+    wrapper.innerHTML = "";
+    const img = document.createElement("img");
+    img.src = dataUrl;
+    img.alt = altText;
+    wrapper.appendChild(img);
+
+    // ローダーDOMを完全削除
+    if (loader && loader.parentNode) {
+      loader.parentNode.removeChild(loader);
+    }
+  }
+
   function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
@@ -183,7 +272,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (stroke) ctx.stroke();
   }
 
-  // 上部のみ角丸
   function roundRectCustomTop(ctx, x, y, width, height, radius) {
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
@@ -195,11 +283,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     ctx.quadraticCurveTo(x, y, x + radius, y);
     ctx.closePath();
     ctx.fill();
-  }
-
-  function showError(msg) {
-    if (loader) {
-      loader.innerHTML = `<p style="color:#ef4444; font-weight:bold; padding:20px; text-align:center;">${msg}</p>`;
-    }
   }
 });

@@ -1,4 +1,4 @@
-// Firebaseの設定情報（ご自身のFirebaseプロジェクトの値に置き換えてください）
+// Firebase設定情報（プロジェクトの設定値に書き換えてください）
 const firebaseConfig = {
   apiKey: "AIzaSyAyiM0bkh3D1zTDok7wjYeipFSg7jdGOV4",
   authDomain: "rsk582027.firebaseapp.com",
@@ -8,16 +8,20 @@ const firebaseConfig = {
   appId: "1:362146687037:web:70b50de3f9d98d4c6ca254"
 };
 
-// Firebaseの初期化（compat版SDK）
-if (!firebase.apps.length) {
+// Firebase初期化（compat版SDK）
+if (!firebase.apps || !firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.firestore();
 
-// 企画設定・時間枠ごとの定員枠（クラスの運用に合わせて調整可能）
+// 企画設定
 const APP_CONFIG = {
-  title: "2年4組 文化祭アトラクション",
-  capacityPerSlot: 15, // 各時間枠の定員人数
+  className: "2年4組",
+  attractionName: "文化祭アトラクション",
+  get fullTitle() {
+    return `${this.className} ${this.attractionName}`;
+  },
+  capacityPerSlot: 15, // 時間枠ごとの定員人数
   timeSlots: [
     "09:30 - 10:00",
     "10:00 - 10:30",

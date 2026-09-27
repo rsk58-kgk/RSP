@@ -9,7 +9,7 @@
   <!-- Firebase SDK (v10 compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <!-- QRCode.js (受取用QR生成) -->
+  <!-- QRCode.js (客端末用受取QR生成) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <!-- html5-qrcode (カメラ読取) -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -18,7 +18,7 @@
 </head>
 <body>
   <header>
-    <h1>2年4組 受付管理</h1>
+    <h1>2年4組 受付管理システム</h1>
     <nav class="tabs">
       <button class="tab-btn active" data-tab="tab-reserve">予約発行</button>
       <button class="tab-btn" data-tab="tab-scan">カメラ受付</button>
@@ -33,17 +33,17 @@
       <form id="reservation-form">
         <div class="form-group">
           <label for="group-name">グループ名 / 代表者名</label>
-          <input type="text" id="group-name" required placeholder="例: やまだグループ">
+          <input type="text" id="group-name" required placeholder="例: 佐藤グループ">
         </div>
         <div class="form-group">
           <label for="group-count">参加人数</label>
-          <input type="number" id="group-count" min="1" max="10" value="2" required>
+          <input type="number" id="group-count" min="1" max="15" value="2" required>
         </div>
         <div class="form-group">
           <label for="time-slot">希望時間枠</label>
           <select id="time-slot" required></select>
         </div>
-        <button type="submit" class="btn primary">予約作成 & QR発行</button>
+        <button type="submit" class="btn primary">予約登録 & 整理券QR発行</button>
       </form>
     </section>
 
@@ -57,7 +57,7 @@
         <button id="btn-start-scan" class="btn success">カメラ起動</button>
         <button id="btn-stop-scan" class="btn danger" style="display:none;">停止</button>
       </div>
-      <div id="scan-message" class="info-text"></div>
+      <div id="scan-message" class="info-text">カメラを起動し、お客さんのチケットQRを読み取ってください</div>
     </section>
 
     <!-- タブ3: 空き状況 & 予約一覧 -->
@@ -67,7 +67,7 @@
 
       <h2>予約一覧（リアルタイム）</h2>
       <div class="filter-controls">
-        <label>表示絞り込み:
+        <label for="filter-slot">時間枠絞り込み:
           <select id="filter-slot">
             <option value="all">すべての時間枠</option>
           </select>
@@ -90,11 +90,11 @@
     </section>
   </main>
 
-  <!-- モーダル: 整理券受取QR表示 -->
+  <!-- モーダル: 整理券受取QR -->
   <div id="qr-modal" class="modal">
     <div class="modal-content">
-      <h3>お客さんにこのQRを読み取ってもらってください</h3>
-      <p class="sub-text">読み取るとスマホに整理券画像が発行されます</p>
+      <h3>お客さんのスマホで読み取ってください</h3>
+      <p class="sub-text">読み取るとスマホに整理券画像が表示されます</p>
       <div id="modal-qrcode"></div>
       <p id="modal-ticket-url" class="ticket-url-text"></p>
       <button id="btn-close-qr-modal" class="btn">閉じる</button>
@@ -108,7 +108,7 @@
       <div id="checkin-details" class="details-box"></div>
       <div class="modal-actions">
         <button id="btn-confirm-checkin" class="btn primary">受付完了にする</button>
-        <button id="btn-cancel-checkin" class="btn">キャンセル</button>
+        <button id="btn-cancel-checkin" class="btn">戻る</button>
       </div>
     </div>
   </div>
