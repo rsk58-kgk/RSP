@@ -40,16 +40,16 @@
         </div>
 
         <div class="form-group">
-          <label>人数（最大4名）</label>
+          <label>人数（1〜4名）</label>
           <div class="keypad-input-display">
             <span id="pax-display">2</span>名
           </div>
+          <!-- テンキー：クリアボタンを廃止し1〜4のワントップ選択に刷新 -->
           <div class="keypad-grid">
             <button type="button" class="key-btn" data-num="1">1</button>
-            <button type="button" class="key-btn" data-num="2">2</button>
+            <button type="button" class="key-btn active" data-num="2">2</button>
             <button type="button" class="key-btn" data-num="3">3</button>
             <button type="button" class="key-btn" data-num="4">4</button>
-            <button type="button" class="key-btn clear" id="btn-clear-keypad">クリア</button>
           </div>
         </div>
 
@@ -134,7 +134,7 @@
     </section>
   </main>
 
-  <!-- Dual Dial Time Picker モーダル（レスポンシブスケール機構・×ボタン付） -->
+  <!-- Dual Dial Time Picker モーダル -->
   <div id="dial-modal" class="modal">
     <div class="modal-content dial-modal-content">
       <div class="modal-top-bar">
@@ -142,7 +142,6 @@
         <button type="button" class="btn-close-icon" id="btn-dial-close-x" aria-label="閉じる">×</button>
       </div>
 
-      <!-- スケーリングラッパー：スマホ画面幅に合わせて縮小 -->
       <div class="tp-scale-wrapper" id="tpScaleWrapper">
         <div class="tp-container" id="timePicker">
           <!-- 左ダイヤル (時) -->
@@ -196,7 +195,9 @@
         <span class="modal-title-text">整理券QRコード</span>
         <button type="button" class="btn-close-icon" id="btn-qr-close-x" aria-label="閉じる">×</button>
       </div>
-      <div id="modal-qrcode"></div>
+      <div class="qrcode-wrapper">
+        <div id="modal-qrcode"></div>
+      </div>
       <p id="modal-ticket-url" class="ticket-url-text"></p>
       <button type="button" id="btn-close-qr-modal" class="btn">閉じる</button>
     </div>

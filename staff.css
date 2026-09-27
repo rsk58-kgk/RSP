@@ -128,7 +128,7 @@ input:focus, select:focus {
   gap: 12px;
 }
 
-/* テンキーUI */
+/* テンキーUI（1〜4名 4列・アクティブ表示対応） */
 .keypad-input-display {
   background: #0f172a;
   border: 1px solid #334155;
@@ -143,23 +143,32 @@ input:focus, select:focus {
 
 .keypad-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 
 .key-btn {
   background: #334155;
-  color: #fff;
-  border: none;
+  color: #cbd5e1;
+  border: 2px solid transparent;
   border-radius: 8px;
   padding: 12px 0;
-  font-size: 1.25rem;
-  font-weight: bold;
+  font-size: 1.35rem;
+  font-weight: 700;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.key-btn:active { background: #475569; }
-.key-btn.clear { background: #dc2626; font-size: 0.9rem; }
+.key-btn:active {
+  background: #475569;
+}
+
+.key-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #38bdf8;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+}
 
 /* チェックボックスUI */
 .simple-checkbox-label {
@@ -212,7 +221,7 @@ input:focus, select:focus {
 .btn.danger { background: #dc2626; }
 .btn.small { padding: 4px 8px; font-size: 0.8rem; }
 
-/* 予約一覧（日本語版） */
+/* 予約一覧 */
 .board-header-bar {
   display: flex;
   justify-content: space-between;
@@ -295,7 +304,7 @@ input:focus, select:focus {
   font-size: 0.9rem;
 }
 
-/* --- モーダル基本設計（脱出経路の確保） --- */
+/* --- モーダル基本設計 --- */
 .modal {
   display: none;
   position: fixed;
@@ -351,10 +360,24 @@ input:focus, select:focus {
 
 .btn-close-icon:hover { color: #fff; }
 
-#modal-qrcode {
+/* 客向け発券QRのクワイエットゾーン（白余白・カメラ認識保証） */
+.qrcode-wrapper {
   display: flex;
   justify-content: center;
+  align-items: center;
   margin: 16px 0;
+}
+
+#modal-qrcode {
+  display: inline-block;
+  background-color: #ffffff;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+#modal-qrcode img, #modal-qrcode canvas {
+  display: block;
 }
 
 .ticket-url-text {
@@ -396,7 +419,6 @@ input:focus, select:focus {
   padding: 16px !important;
 }
 
-/* スケーリングラッパー：幅100%・はみ出しを防ぐ */
 .tp-scale-wrapper {
   width: 100%;
   overflow: hidden;
@@ -407,7 +429,6 @@ input:focus, select:focus {
   position: relative;
 }
 
-/* 基準コンテナ（幅680px・高さ380px）で固定し、親ラッパーでスケールする */
 .tp-container {
   --bg-color: #0d1117;
   --panel-bg: #161b22;
@@ -526,7 +547,6 @@ input:focus, select:focus {
   border: 1px solid var(--accent);
 }
 
-/* 左右の見切れダイヤル円盤（基準サイズ680pxに最適化） */
 .tp-dial-wrapper {
   position: absolute;
   top: 50%;
@@ -600,7 +620,6 @@ input:focus, select:focus {
   color: var(--text-muted);
 }
 
-/* 固定針 */
 .tp-pointer {
   position: absolute;
   top: 50%;

@@ -65,23 +65,33 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // 2. テンキー入力制御（1〜4名）
+  // 2. テンキー入力制御（1〜4名ワントップ化・アクティブ切り替え）
   let currentPax = 2;
-  paxDisplay.textContent = currentPax;
+  const keyBtns = document.querySelectorAll(".key-btn");
 
-  document.querySelectorAll(".key-btn").forEach(btn => {
+  keyBtns.forEach(btn => {
     btn.addEventListener("click", () => {
-      if (btn.id === "btn-clear-keypad") {
-        currentPax = 1;
-      } else {
-        const val = parseInt(btn.dataset.num, 10);
-        if (val >= 1 && val <= 4) {
-          currentPax = val;
-        }
+      const val = parseInt(btn.dataset.num, 10);
+      if (val >= 1 && val <= 4) {
+        currentPax = val;
+        paxDisplay.textContent = currentPax;
+        keyBtns.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
       }
-      paxDisplay.textContent = currentPax;
     });
   });
+
+  function resetPaxToDefault() {
+    currentPax = 2;
+    paxDisplay.textContent = currentPax;
+    keyBtns.forEach(b => {
+      if (b.dataset.num === "2") {
+        b.classList.add("active");
+      } else {
+        b.classList.remove("active");
+      }
+    });
+  }
 
   // 3. 設定のリアルタイム購読 & 保存
   db.collection("settings").doc("config").onSnapshot(doc => {
@@ -111,7 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // 4. Dual Dial Time Picker ロジック（完全レスポンシブ）
+  // 4. Dual Dial Time Picker ロジック
   const pickerState = {
     is24h: true,
     hour: 9,
@@ -135,7 +145,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const ampmGroup = document.getElementById("ampmGroup");
 
   function setupDials() {
-    // 時間ダイヤルの目盛り配置
     hourDial.innerHTML = "";
     const totalHourTicks = pickerState.is24h ? 24 : 12;
     for (let i = 0; i < totalHourTicks; i++) {
@@ -157,7 +166,6 @@ document.addEventListener("DOMContentLoaded", () => {
       hourDial.appendChild(tick);
     }
 
-    // 分ダイヤル（10分刻み 6分割）
     minuteDial.innerHTML = "";
     for (let i = 0; i < 6; i++) {
       const angle = 60 * i;
@@ -204,7 +212,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     displayTime.textContent = `${String(hDisplay).padStart(2, "0")}:${String(pickerState.minute).padStart(2, "0")}`;
-
     hourDial.style.transform = `rotate(${pickerState.hourAngle}deg)`;
     minuteDial.style.transform = `rotate(${pickerState.minuteAngle}deg)`;
   }
@@ -218,7 +225,6 @@ document.addEventListener("DOMContentLoaded", () => {
     updatePickerUI();
   }
 
-  // スマホ幅に合わせてピッカー全体を自動スケーリングする処理
   function adjustDialScale() {
     if (!tpScaleWrapper || !timePicker) return;
     const wrapperWidth = tpScaleWrapper.clientWidth;
@@ -229,7 +235,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (scale > 1) scale = 1;
 
     timePicker.style.transform = `scale(${scale})`;
-    // スケール後の高さをラッパーに反映して下部ボタンを詰める
     tpScaleWrapper.style.height = `${baseHeight * scale}px`;
   }
 
@@ -364,7 +369,6 @@ document.addEventListener("DOMContentLoaded", () => {
     syncAnglesFromTime();
   });
 
-  // モーダルオープン連携
   function openDialModal() {
     const currentVal = timeSlotInput.value.trim();
     if (currentVal && currentVal.includes(":")) {
@@ -376,7 +380,6 @@ document.addEventListener("DOMContentLoaded", () => {
     syncAnglesFromTime();
     dialModal.classList.add("active");
 
-    // モーダル表示直後に幅を取得してスケールを適用
     requestAnimationFrame(() => {
       adjustDialScale();
     });
@@ -397,7 +400,6 @@ document.addEventListener("DOMContentLoaded", () => {
   btnDialCancel.addEventListener("click", closeDialModal);
   btnDialCloseX.addEventListener("click", closeDialModal);
 
-  // 暗幕（オーバーレイ）タップで閉じる安全策
   dialModal.addEventListener("click", (e) => {
     if (e.target === dialModal) {
       closeDialModal();
@@ -427,7 +429,7 @@ document.addEventListener("DOMContentLoaded", () => {
     resumeScanner();
   });
 
-  // 5. 予約発行（グループ上限チェック）
+  // 5. 予約発行（全条件バリデーション & 発券ブロック）
   reservationForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const groupName = groupNameInput.value.trim();
@@ -440,15 +442,51 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    // --- 時刻バリデーション ---
+    const [slotH, slotM] = timeSlot.split(":").map(Number);
+    const slotMinutes = slotH * 60 + slotM;
+
+    const [openH, openM] = configData.openTime.split(":").map(Number);
+    const openMinutes = openH * 60 + openM;
+
+    const [closeH, closeM] = configData.closeTime.split(":").map(Number);
+    const closeMinutes = closeH * 60 + closeM;
+
+    // ① 営業時間外チェック
+    if (slotMinutes < openMinutes) {
+      alert(`開始時刻（${configData.openTime}）より前の時間は予約できません。`);
+      return;
+    }
+    if (slotMinutes >= closeMinutes) {
+      alert(`終了時刻（${configData.closeTime}）以降の時間は予約できません。`);
+      return;
+    }
+
+    // ② 枠の不一致チェック（10分刻みの運用スロット外）
+    if (!activeTimeSlots.includes(timeSlot)) {
+      alert("指定された時間は有効な10分枠に存在しません。正しい枠を選択してください。");
+      return;
+    }
+
+    // ③ 過去時刻チェック（現在時刻を過ぎている枠の発券をブロック）
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    if (slotMinutes <= currentMinutes) {
+      alert("すでに過ぎた時間の予約は発行できません。");
+      return;
+    }
+
+    // ④ 上限超過チェック（対象枠の有効グループ数）
     const existingActiveGroups = reservations.filter(
       r => r.timeSlot === timeSlot && r.status !== "cancelled"
     ).length;
 
     if (existingActiveGroups >= configData.maxGroupsPerSlot) {
-      alert(`${timeSlot} の枠はすでに上限（${configData.maxGroupsPerSlot}組）に達しています。`);
+      alert(`${timeSlot} の枠は上限（${configData.maxGroupsPerSlot}組）に達しているため予約できません。`);
       return;
     }
 
+    // --- Firestore保存 & 発券処理 ---
     try {
       const docRef = await db.collection("reservations").add({
         groupName: groupName,
@@ -460,31 +498,37 @@ document.addEventListener("DOMContentLoaded", () => {
         checkedInAt: null
       });
 
+      // フォーム初期化
       groupNameInput.value = "";
       timeSlotInput.value = "";
       isRepeatCheckbox.checked = false;
-      currentPax = 2;
-      paxDisplay.textContent = currentPax;
+      resetPaxToDefault();
 
+      // 客用チケットURL
       const baseUrl = window.location.href.split("?")[0].replace("index.html", "");
       const separator = baseUrl.endsWith("/") ? "" : "/";
       const ticketUrl = `${baseUrl}${separator}ticket.html?id=${docRef.id}`;
 
+      modalTicketUrl.textContent = ticketUrl;
       modalQrCode.innerHTML = "";
+
+      // 【重要】サイズ計算崩れを防ぐため、先にモーダルを表示状態にしてからQRを生成
+      qrModal.classList.add("active");
+
       new QRCode(modalQrCode, {
         text: ticketUrl,
         width: 200,
         height: 200,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M
       });
-      modalTicketUrl.textContent = ticketUrl;
-      qrModal.classList.add("active");
     } catch (err) {
       alert("発券失敗: " + err.message);
     }
   });
 
-  // 6. 予約一覧（リアルタイム購読・自然な日本語化）
+  // 6. 予約一覧（リアルタイム購読）
   db.collection("reservations")
     .orderBy("createdAt", "desc")
     .onSnapshot(snapshot => {
