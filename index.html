@@ -134,44 +134,52 @@
     </section>
   </main>
 
-  <!-- time-select.html 完全移植：Dual Dial Time Picker モーダル -->
+  <!-- Dual Dial Time Picker モーダル（レスポンシブスケール機構・×ボタン付） -->
   <div id="dial-modal" class="modal">
     <div class="modal-content dial-modal-content">
-      <div class="tp-container" id="timePicker">
-        <!-- 左ダイヤル (時) -->
-        <div class="tp-dial-wrapper tp-dial-left" id="hourDialWrap">
-          <div class="tp-dial-plate" id="hourDial"></div>
-          <span class="tp-label">時</span>
-        </div>
-        <div class="tp-pointer tp-pointer-left"></div>
+      <div class="modal-top-bar">
+        <span class="modal-title-text">案内時刻を選択</span>
+        <button type="button" class="btn-close-icon" id="btn-dial-close-x" aria-label="閉じる">×</button>
+      </div>
 
-        <!-- 中央パネル -->
-        <div class="tp-center-panel">
-          <div class="tp-header">
-            <div class="tp-button-group">
-              <button type="button" class="tp-mode-btn" id="btn12h">12時間</button>
-              <button type="button" class="tp-mode-btn active" id="btn24h">24時間</button>
+      <!-- スケーリングラッパー：スマホ画面幅に合わせて縮小 -->
+      <div class="tp-scale-wrapper" id="tpScaleWrapper">
+        <div class="tp-container" id="timePicker">
+          <!-- 左ダイヤル (時) -->
+          <div class="tp-dial-wrapper tp-dial-left" id="hourDialWrap">
+            <div class="tp-dial-plate" id="hourDial"></div>
+            <span class="tp-label">時</span>
+          </div>
+          <div class="tp-pointer tp-pointer-left"></div>
+
+          <!-- 中央パネル -->
+          <div class="tp-center-panel">
+            <div class="tp-header">
+              <div class="tp-button-group">
+                <button type="button" class="tp-mode-btn" id="btn12h">12時間</button>
+                <button type="button" class="tp-mode-btn active" id="btn24h">24時間</button>
+              </div>
+              <div class="tp-button-group tp-ampm-group hidden" id="ampmGroup">
+                <button type="button" class="tp-ampm-toggle-btn active" id="btnAM">午前</button>
+                <button type="button" class="tp-ampm-toggle-btn" id="btnPM">午後</button>
+              </div>
             </div>
-            <div class="tp-button-group tp-ampm-group hidden" id="ampmGroup">
-              <button type="button" class="tp-ampm-toggle-btn active" id="btnAM">午前</button>
-              <button type="button" class="tp-ampm-toggle-btn" id="btnPM">午後</button>
+
+            <div class="tp-time-display">
+              <span class="tp-time-value" id="displayTime">09:30</span>
+              <span class="tp-time-ampm" id="displayAmPm" style="display:none;"></span>
             </div>
+
+            <div class="tp-precision-badge" id="minuteModeBadge">10分刻み</div>
           </div>
 
-          <div class="tp-time-display">
-            <span class="tp-time-value" id="displayTime">09:30</span>
-            <span class="tp-time-ampm" id="displayAmPm" style="display:none;"></span>
+          <!-- 右ダイヤル (分: 10分刻み) -->
+          <div class="tp-dial-wrapper tp-dial-right" id="minuteDialWrap">
+            <div class="tp-dial-plate" id="minuteDial"></div>
+            <span class="tp-label">分</span>
           </div>
-
-          <div class="tp-precision-badge" id="minuteModeBadge">10分刻み</div>
+          <div class="tp-pointer tp-pointer-right"></div>
         </div>
-
-        <!-- 右ダイヤル (分: 10分刻み) -->
-        <div class="tp-dial-wrapper tp-dial-right" id="minuteDialWrap">
-          <div class="tp-dial-plate" id="minuteDial"></div>
-          <span class="tp-label">分</span>
-        </div>
-        <div class="tp-pointer tp-pointer-right"></div>
       </div>
 
       <div class="modal-actions-row">
@@ -184,7 +192,10 @@
   <!-- 発券QRモーダル -->
   <div id="qr-modal" class="modal">
     <div class="modal-content">
-      <h3>整理券QRコード</h3>
+      <div class="modal-top-bar">
+        <span class="modal-title-text">整理券QRコード</span>
+        <button type="button" class="btn-close-icon" id="btn-qr-close-x" aria-label="閉じる">×</button>
+      </div>
       <div id="modal-qrcode"></div>
       <p id="modal-ticket-url" class="ticket-url-text"></p>
       <button type="button" id="btn-close-qr-modal" class="btn">閉じる</button>
@@ -194,7 +205,10 @@
   <!-- 受付確認モーダル -->
   <div id="checkin-modal" class="modal">
     <div class="modal-content">
-      <h3>受付確認</h3>
+      <div class="modal-top-bar">
+        <span class="modal-title-text">受付確認</span>
+        <button type="button" class="btn-close-icon" id="btn-checkin-close-x" aria-label="閉じる">×</button>
+      </div>
       <div id="checkin-details" class="details-box"></div>
       <div class="modal-actions-col">
         <button type="button" id="btn-confirm-checkin" class="btn success">受付を完了する</button>

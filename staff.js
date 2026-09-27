@@ -32,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const modalQrCode = document.getElementById("modal-qrcode");
   const modalTicketUrl = document.getElementById("modal-ticket-url");
   const btnCloseQrModal = document.getElementById("btn-close-qr-modal");
+  const btnQrCloseX = document.getElementById("btn-qr-close-x");
 
   const btnStartScan = document.getElementById("btn-start-scan");
   const btnStopScan = document.getElementById("btn-stop-scan");
@@ -40,11 +41,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const checkinDetails = document.getElementById("checkin-details");
   const btnConfirmCheckin = document.getElementById("btn-confirm-checkin");
   const btnCancelCheckin = document.getElementById("btn-cancel-checkin");
+  const btnCheckinCloseX = document.getElementById("btn-checkin-close-x");
 
   // ダイヤルモーダル要素
   const dialModal = document.getElementById("dial-modal");
   const btnDialConfirm = document.getElementById("btn-dial-confirm");
   const btnDialCancel = document.getElementById("btn-dial-cancel");
+  const btnDialCloseX = document.getElementById("btn-dial-close-x");
+  const tpScaleWrapper = document.getElementById("tpScaleWrapper");
+  const timePicker = document.getElementById("timePicker");
 
   // 1. タブ切り替え
   tabs.forEach(btn => {
@@ -106,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // 4. time-select.html 完全移植 Dual Dial Time Picker ロジック
+  // 4. Dual Dial Time Picker ロジック（完全レスポンシブ）
   const pickerState = {
     is24h: true,
     hour: 9,
@@ -152,7 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
       hourDial.appendChild(tick);
     }
 
-    // 分ダイヤル（文化祭仕様：10分刻み 6分割）
+    // 分ダイヤル（10分刻み 6分割）
     minuteDial.innerHTML = "";
     for (let i = 0; i < 6; i++) {
       const angle = 60 * i;
@@ -208,11 +213,31 @@ document.addEventListener("DOMContentLoaded", () => {
     const totalHours = pickerState.is24h ? 24 : 12;
     const h = pickerState.is24h ? pickerState.hour : (pickerState.hour % 12);
     pickerState.hourAngle = 90 - (h * (360 / totalHours));
-    // 10分刻み（60度ごと）
     pickerState.minuteAngle = 270 - (pickerState.minute * 6);
     prev12Hour = pickerState.hour % 12 || 12;
     updatePickerUI();
   }
+
+  // スマホ幅に合わせてピッカー全体を自動スケーリングする処理
+  function adjustDialScale() {
+    if (!tpScaleWrapper || !timePicker) return;
+    const wrapperWidth = tpScaleWrapper.clientWidth;
+    const baseWidth = 680;
+    const baseHeight = 380;
+
+    let scale = wrapperWidth / baseWidth;
+    if (scale > 1) scale = 1;
+
+    timePicker.style.transform = `scale(${scale})`;
+    // スケール後の高さをラッパーに反映して下部ボタンを詰める
+    tpScaleWrapper.style.height = `${baseHeight * scale}px`;
+  }
+
+  window.addEventListener("resize", () => {
+    if (dialModal.classList.contains("active")) {
+      adjustDialScale();
+    }
+  });
 
   function bindDrag(element, onRotate, onEnd) {
     let isDragging = false;
@@ -264,7 +289,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }, { passive: false });
   }
 
-  // 時間ダイヤル回転
+  // 時間ダイヤル
   bindDrag(hourWrap, (deltaAngle) => {
     pickerState.hourAngle += deltaAngle;
     const totalHours = pickerState.is24h ? 24 : 12;
@@ -288,14 +313,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     updatePickerUI();
   }, () => {
-    // 針に吸い付くスナップ
     const totalHours = pickerState.is24h ? 24 : 12;
     const h = pickerState.is24h ? pickerState.hour : (pickerState.hour % 12);
     pickerState.hourAngle = 90 - (h * (360 / totalHours));
     updatePickerUI();
   });
 
-  // 分ダイヤル回転（10分刻みスナップ）
+  // 分ダイヤル（10分刻み）
   bindDrag(minuteWrap, (deltaAngle) => {
     pickerState.minuteAngle += deltaAngle;
 
@@ -306,12 +330,10 @@ document.addEventListener("DOMContentLoaded", () => {
     pickerState.minute = stepIndex * 10;
     updatePickerUI();
   }, () => {
-    // 10分刻みの目盛りにスナップ
     pickerState.minuteAngle = 270 - (pickerState.minute * 6);
     updatePickerUI();
   });
 
-  // AM/PM切替
   function setPeriod(isPM) {
     if (pickerState.is24h) return;
     const currentIsPM = pickerState.hour >= 12;
@@ -343,26 +365,66 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // モーダルオープン連携
-  timeSlotInput.addEventListener("click", () => {
+  function openDialModal() {
     const currentVal = timeSlotInput.value.trim();
     if (currentVal && currentVal.includes(":")) {
       const [h, m] = currentVal.split(":").map(Number);
-      pickerState.hour = h;
-      pickerState.minute = Math.round(m / 10) * 10 % 60;
+      if (!isNaN(h)) pickerState.hour = h;
+      if (!isNaN(m)) pickerState.minute = Math.round(m / 10) * 10 % 60;
     }
     setupDials();
     syncAnglesFromTime();
     dialModal.classList.add("active");
-  });
+
+    // モーダル表示直後に幅を取得してスケールを適用
+    requestAnimationFrame(() => {
+      adjustDialScale();
+    });
+  }
+
+  function closeDialModal() {
+    dialModal.classList.remove("active");
+  }
+
+  timeSlotInput.addEventListener("click", openDialModal);
 
   btnDialConfirm.addEventListener("click", () => {
     const formatted = `${String(pickerState.hour).padStart(2, "0")}:${String(pickerState.minute).padStart(2, "0")}`;
     timeSlotInput.value = formatted;
-    dialModal.classList.remove("active");
+    closeDialModal();
   });
 
-  btnDialCancel.addEventListener("click", () => {
-    dialModal.classList.remove("active");
+  btnDialCancel.addEventListener("click", closeDialModal);
+  btnDialCloseX.addEventListener("click", closeDialModal);
+
+  // 暗幕（オーバーレイ）タップで閉じる安全策
+  dialModal.addEventListener("click", (e) => {
+    if (e.target === dialModal) {
+      closeDialModal();
+    }
+  });
+
+  qrModal.addEventListener("click", (e) => {
+    if (e.target === qrModal) {
+      qrModal.classList.remove("active");
+    }
+  });
+  btnCloseQrModal.addEventListener("click", () => qrModal.classList.remove("active"));
+  btnQrCloseX.addEventListener("click", () => qrModal.classList.remove("active"));
+
+  checkinModal.addEventListener("click", (e) => {
+    if (e.target === checkinModal) {
+      checkinModal.classList.remove("active");
+      resumeScanner();
+    }
+  });
+  btnCancelCheckin.addEventListener("click", () => {
+    checkinModal.classList.remove("active");
+    resumeScanner();
+  });
+  btnCheckinCloseX.addEventListener("click", () => {
+    checkinModal.classList.remove("active");
+    resumeScanner();
   });
 
   // 5. 予約発行（グループ上限チェック）
@@ -411,8 +473,8 @@ document.addEventListener("DOMContentLoaded", () => {
       modalQrCode.innerHTML = "";
       new QRCode(modalQrCode, {
         text: ticketUrl,
-        width: 220,
-        height: 220,
+        width: 200,
+        height: 200,
         correctLevel: QRCode.CorrectLevel.M
       });
       modalTicketUrl.textContent = ticketUrl;
@@ -420,10 +482,6 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (err) {
       alert("発券失敗: " + err.message);
     }
-  });
-
-  btnCloseQrModal.addEventListener("click", () => {
-    qrModal.classList.remove("active");
   });
 
   // 6. 予約一覧（リアルタイム購読・自然な日本語化）
@@ -598,11 +656,6 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (err) {
       alert("受付更新エラー: " + err.message);
     }
-  });
-
-  btnCancelCheckin.addEventListener("click", () => {
-    checkinModal.classList.remove("active");
-    resumeScanner();
   });
 
   function resumeScanner() {
