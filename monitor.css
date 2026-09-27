@@ -17,16 +17,15 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  padding: 24px 32px;
+  padding: 20px 28px;
 }
 
-/* ヘッダー */
 .monitor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 2px solid #1e293b;
-  padding-bottom: 16px;
+  padding-bottom: 12px;
 }
 
 .header-left {
@@ -38,7 +37,7 @@ body {
 .class-tag {
   background: #2563eb;
   color: #fff;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: 800;
   padding: 6px 16px;
   border-radius: 8px;
@@ -47,62 +46,27 @@ body {
 .header-title {
   font-size: 2.2rem;
   font-weight: 800;
-  letter-spacing: 1px;
-}
-
-.header-right {
-  text-align: right;
-}
-
-.clock-label {
-  font-size: 0.85rem;
-  color: #94a3b8;
   letter-spacing: 2px;
 }
 
 .live-clock {
   font-family: "Courier New", Courier, monospace;
-  font-size: 2.5rem;
+  font-size: 2.6rem;
   font-weight: 700;
   color: #38bdf8;
   text-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
 }
 
-/* ガイドバナー */
-.guide-banner {
-  margin: 16px 0;
-  background: rgba(30, 41, 59, 0.7);
-  padding: 10px 20px;
-  border-radius: 8px;
-  border-left: 6px solid #38bdf8;
-  font-size: 1.2rem;
-  color: #e2e8f0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.pulse-icon {
-  color: #22c55e;
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(1.2); }
-}
-
-/* スロットグリッド */
 .monitor-main {
   flex: 1;
   overflow-y: auto;
-  padding-right: 8px;
+  padding: 20px 0;
 }
 
 .slots-board {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
   align-content: start;
 }
 
@@ -110,17 +74,16 @@ body {
   background: #0f172a;
   border: 2px solid #1e293b;
   border-radius: 12px;
-  padding: 16px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 120px;
-  transition: transform 0.2s, border-color 0.2s;
+  min-height: 110px;
 }
 
 .slot-item.is-current {
   border-color: #38bdf8;
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
 }
 
 .slot-time {
@@ -130,66 +93,51 @@ body {
   color: #ffffff;
 }
 
-.slot-status-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-top: 10px;
-}
-
 .slot-remain-num {
-  font-size: 2.1rem;
+  font-size: 2.2rem;
   font-weight: 800;
   color: #4ade80;
+  text-align: right;
 }
 
 .slot-unit {
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: #94a3b8;
   margin-left: 4px;
 }
 
-/* 状態ごとの配色 */
 .slot-item.few .slot-remain-num {
   color: #facc15;
 }
 
 .slot-item.full {
-  background: #1e1b24;
+  background: #1a1622;
   border-color: #451a1a;
 }
 
 .slot-item.full .slot-remain-num {
   color: #ef4444;
-  font-size: 1.6rem;
+  font-size: 1.8rem;
 }
 
 .slot-item.past {
-  opacity: 0.35;
-  filter: grayscale(80%);
+  opacity: 0.3;
 }
 
-/* フッター */
 .monitor-footer {
   display: flex;
   justify-content: center;
-  gap: 32px;
+  gap: 40px;
   border-top: 2px solid #1e293b;
-  padding-top: 14px;
+  padding-top: 12px;
   font-size: 1.1rem;
 }
 
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .legend-badge {
-  padding: 4px 12px;
+  padding: 4px 16px;
   border-radius: 6px;
-  font-size: 0.95rem;
-  font-weight: bold;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .legend-badge.available { background: #166534; color: #4ade80; }

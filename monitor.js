@@ -6,7 +6,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let activeTimeSlots = APP_CONFIG.generateTimeSlots();
   let reservations = [];
 
-  // 時計更新
   function updateClock() {
     const now = new Date();
     const h = String(now.getHours()).padStart(2, "0");
@@ -17,7 +16,6 @@ document.addEventListener("DOMContentLoaded", () => {
   setInterval(updateClock, 1000);
   updateClock();
 
-  // Firestore設定の監視
   db.collection("settings").doc("config").onSnapshot(doc => {
     if (doc.exists) {
       const data = doc.data();
@@ -29,7 +27,6 @@ document.addEventListener("DOMContentLoaded", () => {
     renderBoard();
   });
 
-  // 予約データの監視（リアルタイム集計）
   db.collection("reservations").onSnapshot(snapshot => {
     reservations = [];
     snapshot.forEach(d => {
@@ -47,7 +44,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const [slotH, slotM] = slot.split(":").map(Number);
       const slotMinutes = slotH * 60 + slotM;
 
-      // 該当スロットの有効予約グループ数を集計（キャンセル除く）
       const groupCount = reservations.filter(
         r => r.timeSlot === slot && r.status !== "cancelled"
       ).length;
@@ -66,15 +62,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       let remainText = isFull ? "満員" : `${remain}<span class="slot-unit">組</span>`;
       if (isPast && !isCurrent) {
-        remainText = `<span style="font-size:1.3rem;color:#64748b;">終了</span>`;
+        remainText = `<span style="font-size:1.4rem;color:#64748b;">終了</span>`;
       }
 
       card.innerHTML = `
         <div class="slot-time">${slot}</div>
-        <div class="slot-status-container">
-          <span style="font-size:0.95rem;color:#94a3b8;">${isPast ? "受付状況" : "残り空き"}</span>
-          <div class="slot-remain-num">${remainText}</div>
-        </div>
+        <div class="slot-remain-num">${remainText}</div>
       `;
       slotsContainer.appendChild(card);
     });

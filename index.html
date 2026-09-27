@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>スタッフ管理システム | 2年4組</title>
+  <title>2年4組 予約・受付管理</title>
   <link rel="stylesheet" href="staff.css">
 
   <!-- Firebase SDK (compat) -->
@@ -18,14 +18,14 @@
 <body>
   <header class="staff-header">
     <div class="header-main">
-      <h1>2年4組 予約・受付</h1>
-      <a href="monitor.html" target="_blank" class="monitor-link-btn">↗ モニター画面を開く</a>
+      <h1>2年4組 予約・受付管理</h1>
+      <a href="monitor.html" target="_blank" class="monitor-link-btn">空き状況モニター</a>
     </div>
     <nav class="staff-tabs">
-      <button class="tab-btn active" data-tab="tab-reserve">発券手続き</button>
-      <button class="tab-btn" data-tab="tab-scan">QR読取受付</button>
-      <button class="tab-btn" data-tab="tab-board">案内板（一覧）</button>
-      <button class="tab-btn" data-tab="tab-settings">システム設定</button>
+      <button type="button" class="tab-btn active" data-tab="tab-reserve">発券</button>
+      <button type="button" class="tab-btn" data-tab="tab-scan">QR受付</button>
+      <button type="button" class="tab-btn" data-tab="tab-board">予約一覧</button>
+      <button type="button" class="tab-btn" data-tab="tab-settings">設定</button>
     </nav>
   </header>
 
@@ -35,65 +35,62 @@
       <h2>新規整理券 発券</h2>
       <form id="reservation-form">
         <div class="form-group">
-          <label>グループ名 / 代表者名</label>
-          <input type="text" id="group-name" required placeholder="例: たかはしグループ">
+          <label for="group-name">グループ名</label>
+          <input type="text" id="group-name" required placeholder="代表者名またはグループ名">
         </div>
 
         <div class="form-group">
-          <label>参加人数（最大4名）</label>
+          <label>人数（最大4名）</label>
           <div class="keypad-input-display">
-            <span id="pax-display">2</span> 名
+            <span id="pax-display">2</span>名
           </div>
-          <!-- テンキー (1〜4, C) -->
           <div class="keypad-grid">
             <button type="button" class="key-btn" data-num="1">1</button>
             <button type="button" class="key-btn" data-num="2">2</button>
             <button type="button" class="key-btn" data-num="3">3</button>
             <button type="button" class="key-btn" data-num="4">4</button>
-            <button type="button" class="key-btn clear" id="btn-clear-keypad">C</button>
+            <button type="button" class="key-btn clear" id="btn-clear-keypad">クリア</button>
           </div>
         </div>
 
         <div class="form-group">
-          <label>希望時間枠（10分刻み）</label>
+          <label for="time-slot-input">案内時間（10分刻み）</label>
           <input type="text" id="time-slot-input" readonly required placeholder="タップして時刻を選択">
         </div>
 
-        <div class="form-group checkbox-group">
-          <label class="toggle-container">
+        <div class="form-group">
+          <label class="simple-checkbox-label">
             <input type="checkbox" id="is-repeat">
-            <span class="toggle-slider"></span>
-            <span class="toggle-label">2回目以降の参加（リピート特典・再挑戦）</span>
+            <span class="custom-check-box"></span>
+            <span class="check-text">再入場（2回目以降）</span>
           </label>
         </div>
 
-        <button type="submit" class="btn primary-action">整理券を発券してQRを表示</button>
+        <button type="submit" class="btn primary-action">発券する</button>
       </form>
     </section>
 
     <!-- ② QRカメラ読取 -->
     <section id="tab-scan" class="tab-content">
-      <h2>入場QRコードスキャン</h2>
+      <h2>入場QR受付</h2>
       <div id="qr-reader-container">
         <div id="qr-reader"></div>
       </div>
       <div class="scanner-controls">
-        <button id="btn-start-scan" class="btn success">カメラ起動</button>
-        <button id="btn-stop-scan" class="btn danger" style="display:none;">停止</button>
+        <button type="button" id="btn-start-scan" class="btn success">カメラ起動</button>
+        <button type="button" id="btn-stop-scan" class="btn danger" style="display:none;">停止</button>
       </div>
-      <p id="scan-message" class="info-text">カメラを起動し、お客さんのチケット画像を枠内に収めてください。</p>
+      <p id="scan-message" class="info-text">カメラを起動してください</p>
     </section>
 
-    <!-- ③ 案内板風一覧 -->
+    <!-- ③ 予約・案内一覧 -->
     <section id="tab-board" class="tab-content">
       <div class="board-header-bar">
-        <h2>DEPARTURES / 呼出・案内状況</h2>
+        <h2>予約・案内一覧</h2>
         <div class="board-filter">
-          <label>枠絞込:
-            <select id="board-filter-slot">
-              <option value="all">ALL SLOTS</option>
-            </select>
-          </label>
+          <select id="board-filter-slot">
+            <option value="all">すべての時間枠</option>
+          </select>
         </div>
       </div>
 
@@ -101,73 +98,85 @@
         <table class="flight-table">
           <thead>
             <tr>
-              <th>TIME</th>
-              <th>GROUP</th>
-              <th>PAX</th>
-              <th>TYPE</th>
-              <th>STATUS</th>
-              <th>ACTION</th>
+              <th>時間</th>
+              <th>グループ名</th>
+              <th>人数</th>
+              <th>区分</th>
+              <th>状態</th>
+              <th>操作</th>
             </tr>
           </thead>
-          <tbody id="flight-tbody">
-            <!-- JSで動的生成 -->
-          </tbody>
+          <tbody id="flight-tbody"></tbody>
         </table>
       </div>
     </section>
 
-    <!-- ④ システム設定 -->
+    <!-- ④ 設定 -->
     <section id="tab-settings" class="tab-content">
-      <h2>システム運用設定</h2>
+      <h2>システム設定</h2>
       <form id="settings-form">
         <div class="form-group">
-          <label>1枠あたりの最大受付グループ数（上限）</label>
+          <label for="setting-max-groups">1枠あたりの上限グループ数</label>
           <input type="number" id="setting-max-groups" min="1" max="10" required>
-          <small class="help-text">※保存すると、モニターやスタッフ全員に即座に反映されます。</small>
         </div>
         <div class="form-group inline-group">
           <div>
-            <label>開始時刻</label>
+            <label for="setting-open-time">開始時刻</label>
             <input type="text" id="setting-open-time" placeholder="09:30" required>
           </div>
           <div>
-            <label>終了時刻</label>
+            <label for="setting-close-time">終了時刻</label>
             <input type="text" id="setting-close-time" placeholder="15:00" required>
           </div>
         </div>
-        <button type="submit" class="btn primary-action">設定をFirestoreに保存</button>
+        <button type="submit" class="btn primary-action">保存</button>
       </form>
     </section>
   </main>
 
-  <!-- Dual Dial Time Picker モーダル -->
+  <!-- time-select.html 完全移植：Dual Dial Time Picker モーダル -->
   <div id="dial-modal" class="modal">
     <div class="modal-content dial-modal-content">
-      <h3>希望時間を選択（10分刻み）</h3>
-      <div class="dial-time-display" id="dial-time-preview">09:30</div>
+      <div class="tp-container" id="timePicker">
+        <!-- 左ダイヤル (時) -->
+        <div class="tp-dial-wrapper tp-dial-left" id="hourDialWrap">
+          <div class="tp-dial-plate" id="hourDial"></div>
+          <span class="tp-label">時</span>
+        </div>
+        <div class="tp-pointer tp-pointer-left"></div>
 
-      <div class="dial-container">
-        <!-- 時ダイヤル -->
-        <div class="dial-block">
-          <div class="dial-label">HOUR (時)</div>
-          <div class="dial-wheel" id="wheel-hour">
-            <div class="dial-hand" id="hand-hour"></div>
-            <!-- 目盛りはJSで配置 -->
+        <!-- 中央パネル -->
+        <div class="tp-center-panel">
+          <div class="tp-header">
+            <div class="tp-button-group">
+              <button type="button" class="tp-mode-btn" id="btn12h">12時間</button>
+              <button type="button" class="tp-mode-btn active" id="btn24h">24時間</button>
+            </div>
+            <div class="tp-button-group tp-ampm-group hidden" id="ampmGroup">
+              <button type="button" class="tp-ampm-toggle-btn active" id="btnAM">午前</button>
+              <button type="button" class="tp-ampm-toggle-btn" id="btnPM">午後</button>
+            </div>
           </div>
-        </div>
-        <!-- 分ダイヤル (10分刻み: 00, 10, 20, 30, 40, 50) -->
-        <div class="dial-block">
-          <div class="dial-label">MIN (分: 10分刻み)</div>
-          <div class="dial-wheel" id="wheel-minute">
-            <div class="dial-hand" id="hand-minute"></div>
-            <!-- 目盛りはJSで配置 -->
+
+          <div class="tp-time-display">
+            <span class="tp-time-value" id="displayTime">09:30</span>
+            <span class="tp-time-ampm" id="displayAmPm" style="display:none;"></span>
           </div>
+
+          <div class="tp-precision-badge" id="minuteModeBadge">10分刻み</div>
         </div>
+
+        <!-- 右ダイヤル (分: 10分刻み) -->
+        <div class="tp-dial-wrapper tp-dial-right" id="minuteDialWrap">
+          <div class="tp-dial-plate" id="minuteDial"></div>
+          <span class="tp-label">分</span>
+        </div>
+        <div class="tp-pointer tp-pointer-right"></div>
       </div>
 
-      <div class="modal-actions">
+      <div class="modal-actions-row">
         <button type="button" id="btn-dial-confirm" class="btn primary">決定</button>
-        <button type="button" id="btn-dial-cancel" class="btn">キャンセル</button>
+        <button type="button" id="btn-dial-cancel" class="btn">閉じる</button>
       </div>
     </div>
   </div>
@@ -175,11 +184,10 @@
   <!-- 発券QRモーダル -->
   <div id="qr-modal" class="modal">
     <div class="modal-content">
-      <h3>お客さんにこのQRを読み取ってもらってください</h3>
-      <p class="sub-text">読み取るとスマホに整理券画像が表示されます</p>
+      <h3>整理券QRコード</h3>
       <div id="modal-qrcode"></div>
       <p id="modal-ticket-url" class="ticket-url-text"></p>
-      <button id="btn-close-qr-modal" class="btn">閉じる</button>
+      <button type="button" id="btn-close-qr-modal" class="btn">閉じる</button>
     </div>
   </div>
 
@@ -188,9 +196,9 @@
     <div class="modal-content">
       <h3>受付確認</h3>
       <div id="checkin-details" class="details-box"></div>
-      <div class="modal-actions">
-        <button id="btn-confirm-checkin" class="btn success">受付を完了する</button>
-        <button id="btn-cancel-checkin" class="btn">閉じる</button>
+      <div class="modal-actions-col">
+        <button type="button" id="btn-confirm-checkin" class="btn success">受付を完了する</button>
+        <button type="button" id="btn-cancel-checkin" class="btn">閉じる</button>
       </div>
     </div>
   </div>

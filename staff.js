@@ -3,7 +3,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let html5QrCode = null;
   let activeCheckinDocId = null;
 
-  // 運用設定値（Firestore settings/config と同期）
   let configData = {
     maxGroupsPerSlot: APP_CONFIG.defaultMaxGroupsPerSlot,
     openTime: APP_CONFIG.defaultOpenTime,
@@ -11,42 +10,24 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   let activeTimeSlots = APP_CONFIG.generateTimeSlots();
 
-  // ピッカー用状態
-  let selectedHour = 9;
-  let selectedMinute = 30;
-
   // DOM要素
   const tabs = document.querySelectorAll(".tab-btn");
   const tabContents = document.querySelectorAll(".tab-content");
 
-  // 予約フォーム要素
   const reservationForm = document.getElementById("reservation-form");
   const groupNameInput = document.getElementById("group-name");
   const paxDisplay = document.getElementById("pax-display");
   const timeSlotInput = document.getElementById("time-slot-input");
   const isRepeatCheckbox = document.getElementById("is-repeat");
 
-  // ダイヤルモーダル要素
-  const dialModal = document.getElementById("dial-modal");
-  const dialTimePreview = document.getElementById("dial-time-preview");
-  const wheelHour = document.getElementById("wheel-hour");
-  const wheelMinute = document.getElementById("wheel-minute");
-  const handHour = document.getElementById("hand-hour");
-  const handMinute = document.getElementById("hand-minute");
-  const btnDialConfirm = document.getElementById("btn-dial-confirm");
-  const btnDialCancel = document.getElementById("btn-dial-cancel");
-
-  // フライトボード要素
   const flightTbody = document.getElementById("flight-tbody");
   const boardFilterSlot = document.getElementById("board-filter-slot");
 
-  // 設定フォーム要素
   const settingsForm = document.getElementById("settings-form");
   const settingMaxGroups = document.getElementById("setting-max-groups");
   const settingOpenTime = document.getElementById("setting-open-time");
   const settingCloseTime = document.getElementById("setting-close-time");
 
-  // カメラ・モーダル要素
   const qrModal = document.getElementById("qr-modal");
   const modalQrCode = document.getElementById("modal-qrcode");
   const modalTicketUrl = document.getElementById("modal-ticket-url");
@@ -59,6 +40,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const checkinDetails = document.getElementById("checkin-details");
   const btnConfirmCheckin = document.getElementById("btn-confirm-checkin");
   const btnCancelCheckin = document.getElementById("btn-cancel-checkin");
+
+  // ダイヤルモーダル要素
+  const dialModal = document.getElementById("dial-modal");
+  const btnDialConfirm = document.getElementById("btn-dial-confirm");
+  const btnDialCancel = document.getElementById("btn-dial-cancel");
 
   // 1. タブ切り替え
   tabs.forEach(btn => {
@@ -74,7 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // 2. テンキー入力制御（1〜4人のみ入力可能）
+  // 2. テンキー入力制御（1〜4名）
   let currentPax = 2;
   paxDisplay.textContent = currentPax;
 
@@ -114,122 +100,264 @@ document.addEventListener("DOMContentLoaded", () => {
         openTime: settingOpenTime.value.trim(),
         closeTime: settingCloseTime.value.trim()
       }, { merge: true });
-      alert("設定を保存しました。全員の画面に即座に反映されます。");
+      alert("設定を保存しました。");
     } catch (err) {
       alert("設定保存失敗: " + err.message);
     }
   });
 
-  // 4. Dual Dial Time Picker (10分刻み対応)
-  timeSlotInput.addEventListener("click", () => {
-    openDialModal();
-  });
+  // 4. time-select.html 完全移植 Dual Dial Time Picker ロジック
+  const pickerState = {
+    is24h: true,
+    hour: 9,
+    minute: 30,
+    hourAngle: 0,
+    minuteAngle: 0
+  };
 
-  function openDialModal() {
-    dialModal.classList.add("active");
-    initDials();
-    updateDialPreview();
-  }
+  let prev12Hour = 9;
 
-  // ダイヤルの目盛り配置
-  function initDials() {
-    wheelHour.querySelectorAll(".dial-num").forEach(e => e.remove());
-    wheelMinute.querySelectorAll(".dial-num").forEach(e => e.remove());
+  const hourDial = document.getElementById("hourDial");
+  const minuteDial = document.getElementById("minuteDial");
+  const hourWrap = document.getElementById("hourDialWrap");
+  const minuteWrap = document.getElementById("minuteDialWrap");
+  const displayTime = document.getElementById("displayTime");
+  const displayAmPm = document.getElementById("displayAmPm");
+  const btn12h = document.getElementById("btn12h");
+  const btn24h = document.getElementById("btn24h");
+  const btnAM = document.getElementById("btnAM");
+  const btnPM = document.getElementById("btnPM");
+  const ampmGroup = document.getElementById("ampmGroup");
 
-    // 時目盛り: 9時〜15時（または開始から終了まで）
-    const hours = [9, 10, 11, 12, 13, 14, 15];
-    const hourStepAngle = 360 / hours.length;
-    hours.forEach((h, i) => {
-      const angle = i * hourStepAngle - 90;
-      const rad = (angle * Math.PI) / 180;
-      const x = 85 + 62 * Math.cos(rad);
-      const y = 85 + 62 * Math.sin(rad);
+  function setupDials() {
+    // 時間ダイヤルの目盛り配置
+    hourDial.innerHTML = "";
+    const totalHourTicks = pickerState.is24h ? 24 : 12;
+    for (let i = 0; i < totalHourTicks; i++) {
+      const angle = (360 / totalHourTicks) * i;
+      const tick = document.createElement("div");
+      tick.className = "tp-tick";
+      tick.style.transform = `rotate(${angle}deg)`;
 
-      const span = document.createElement("span");
-      span.className = "dial-num";
-      span.textContent = h;
-      span.style.left = `${x}px`;
-      span.style.top = `${y}px`;
-      wheelHour.appendChild(span);
-    });
+      const line = document.createElement("div");
+      line.className = "tp-tick-line major";
 
-    // 分目盛り: 6分割（00, 10, 20, 30, 40, 50）
-    const minutes = ["00", "10", "20", "30", "40", "50"];
-    minutes.forEach((m, i) => {
-      const angle = i * 60 - 90;
-      const rad = (angle * Math.PI) / 180;
-      const x = 85 + 62 * Math.cos(rad);
-      const y = 85 + 62 * Math.sin(rad);
+      const num = document.createElement("div");
+      num.className = "tp-tick-num";
+      num.style.transform = `rotate(-${angle}deg)`;
+      num.textContent = pickerState.is24h ? String(i).padStart(2, "0") : (i === 0 ? "12" : String(i));
 
-      const span = document.createElement("span");
-      span.className = "dial-num";
-      span.textContent = m;
-      span.style.left = `${x}px`;
-      span.style.top = `${y}px`;
-      wheelMinute.appendChild(span);
-    });
-
-    setDialRotation();
-  }
-
-  function setDialRotation() {
-    const hours = [9, 10, 11, 12, 13, 14, 15];
-    const hourIdx = Math.max(0, hours.indexOf(selectedHour));
-    const hourAngle = hourIdx * (360 / hours.length);
-    handHour.style.transform = `rotate(${hourAngle}deg)`;
-
-    const minIdx = Math.floor(selectedMinute / 10);
-    const minAngle = minIdx * 60;
-    handMinute.style.transform = `rotate(${minAngle}deg)`;
-  }
-
-  // ダイヤルのタッチ/クリック回転処理
-  function setupDialInteraction(wheel, isHour) {
-    function handlePointer(e) {
-      const rect = wheel.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      const x = clientX - (rect.left + rect.width / 2);
-      const y = clientY - (rect.top + rect.height / 2);
-
-      let deg = (Math.atan2(y, x) * 180) / Math.PI + 90;
-      if (deg < 0) deg += 360;
-
-      if (isHour) {
-        const hours = [9, 10, 11, 12, 13, 14, 15];
-        const step = 360 / hours.length;
-        const index = Math.round(deg / step) % hours.length;
-        selectedHour = hours[index];
-      } else {
-        // 10分刻みスナップ（60度ごと）
-        const index = Math.round(deg / 60) % 6;
-        selectedMinute = index * 10;
-      }
-      setDialRotation();
-      updateDialPreview();
+      tick.appendChild(line);
+      tick.appendChild(num);
+      hourDial.appendChild(tick);
     }
 
-    let isDown = false;
-    wheel.addEventListener("mousedown", (e) => { isDown = true; handlePointer(e); });
-    window.addEventListener("mousemove", (e) => { if (isDown) handlePointer(e); });
-    window.addEventListener("mouseup", () => { isDown = false; });
+    // 分ダイヤル（文化祭仕様：10分刻み 6分割）
+    minuteDial.innerHTML = "";
+    for (let i = 0; i < 6; i++) {
+      const angle = 60 * i;
+      const tick = document.createElement("div");
+      tick.className = "tp-tick";
+      tick.style.transform = `rotate(${angle}deg)`;
 
-    wheel.addEventListener("touchstart", (e) => { isDown = true; handlePointer(e); }, { passive: false });
-    wheel.addEventListener("touchmove", (e) => { if (isDown) { e.preventDefault(); handlePointer(e); } }, { passive: false });
-    wheel.addEventListener("touchend", () => { isDown = false; });
+      const line = document.createElement("div");
+      line.className = "tp-tick-line major";
+
+      const num = document.createElement("div");
+      num.className = "tp-tick-num";
+      num.style.transform = `rotate(-${angle}deg)`;
+      num.textContent = String(i * 10).padStart(2, "0");
+
+      tick.appendChild(line);
+      tick.appendChild(num);
+      minuteDial.appendChild(tick);
+    }
   }
 
-  setupDialInteraction(wheelHour, true);
-  setupDialInteraction(wheelMinute, false);
+  function updatePickerUI() {
+    const isPM = pickerState.hour >= 12;
+    let hDisplay = pickerState.hour;
 
-  function updateDialPreview() {
-    const h = String(selectedHour).padStart(2, "0");
-    const m = String(selectedMinute).padStart(2, "0");
-    dialTimePreview.textContent = `${h}:${m}`;
+    if (!pickerState.is24h) {
+      hDisplay = pickerState.hour % 12;
+      if (hDisplay === 0) hDisplay = 12;
+      displayAmPm.textContent = isPM ? "午後" : "午前";
+      displayAmPm.style.display = "inline";
+      ampmGroup.classList.remove("hidden");
+
+      if (isPM) {
+        btnPM.classList.add("active");
+        btnAM.classList.remove("active");
+      } else {
+        btnAM.classList.add("active");
+        btnPM.classList.remove("active");
+      }
+    } else {
+      displayAmPm.textContent = "";
+      displayAmPm.style.display = "none";
+      ampmGroup.classList.add("hidden");
+    }
+
+    displayTime.textContent = `${String(hDisplay).padStart(2, "0")}:${String(pickerState.minute).padStart(2, "0")}`;
+
+    hourDial.style.transform = `rotate(${pickerState.hourAngle}deg)`;
+    minuteDial.style.transform = `rotate(${pickerState.minuteAngle}deg)`;
   }
+
+  function syncAnglesFromTime() {
+    const totalHours = pickerState.is24h ? 24 : 12;
+    const h = pickerState.is24h ? pickerState.hour : (pickerState.hour % 12);
+    pickerState.hourAngle = 90 - (h * (360 / totalHours));
+    // 10分刻み（60度ごと）
+    pickerState.minuteAngle = 270 - (pickerState.minute * 6);
+    prev12Hour = pickerState.hour % 12 || 12;
+    updatePickerUI();
+  }
+
+  function bindDrag(element, onRotate, onEnd) {
+    let isDragging = false;
+    let lastAngle = 0;
+
+    function getAngle(e) {
+      const rect = element.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+      const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+      return Math.atan2(clientY - cy, clientX - cx) * (180 / Math.PI);
+    }
+
+    function onPointerDown(e) {
+      isDragging = true;
+      lastAngle = getAngle(e);
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", onPointerUp);
+    }
+
+    function onPointerMove(e) {
+      if (!isDragging) return;
+      const currentAngle = getAngle(e);
+      let deltaAngle = currentAngle - lastAngle;
+
+      if (deltaAngle > 180) deltaAngle -= 360;
+      if (deltaAngle < -180) deltaAngle += 360;
+
+      onRotate(deltaAngle);
+      lastAngle = currentAngle;
+    }
+
+    function onPointerUp() {
+      if (!isDragging) return;
+      isDragging = false;
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      if (onEnd) onEnd();
+    }
+
+    element.addEventListener("pointerdown", onPointerDown);
+
+    element.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const dir = e.deltaY > 0 ? -1 : 1;
+      onRotate(dir * 5);
+      if (onEnd) onEnd();
+    }, { passive: false });
+  }
+
+  // 時間ダイヤル回転
+  bindDrag(hourWrap, (deltaAngle) => {
+    pickerState.hourAngle += deltaAngle;
+    const totalHours = pickerState.is24h ? 24 : 12;
+    const step = 360 / totalHours;
+
+    let norm = (90 - pickerState.hourAngle) % 360;
+    if (norm < 0) norm += 360;
+
+    const rawIndex = Math.round(norm / step) % totalHours;
+
+    if (pickerState.is24h) {
+      pickerState.hour = rawIndex;
+    } else {
+      const cur12 = rawIndex === 0 ? 12 : rawIndex;
+      let isPM = pickerState.hour >= 12;
+      if (prev12Hour === 11 && cur12 === 12) isPM = !isPM;
+      else if (prev12Hour === 12 && cur12 === 11) isPM = !isPM;
+
+      prev12Hour = cur12;
+      pickerState.hour = cur12 === 12 ? (isPM ? 12 : 0) : (isPM ? cur12 + 12 : cur12);
+    }
+    updatePickerUI();
+  }, () => {
+    // 針に吸い付くスナップ
+    const totalHours = pickerState.is24h ? 24 : 12;
+    const h = pickerState.is24h ? pickerState.hour : (pickerState.hour % 12);
+    pickerState.hourAngle = 90 - (h * (360 / totalHours));
+    updatePickerUI();
+  });
+
+  // 分ダイヤル回転（10分刻みスナップ）
+  bindDrag(minuteWrap, (deltaAngle) => {
+    pickerState.minuteAngle += deltaAngle;
+
+    let norm = (270 - pickerState.minuteAngle) % 360;
+    if (norm < 0) norm += 360;
+
+    const stepIndex = Math.round(norm / 60) % 6;
+    pickerState.minute = stepIndex * 10;
+    updatePickerUI();
+  }, () => {
+    // 10分刻みの目盛りにスナップ
+    pickerState.minuteAngle = 270 - (pickerState.minute * 6);
+    updatePickerUI();
+  });
+
+  // AM/PM切替
+  function setPeriod(isPM) {
+    if (pickerState.is24h) return;
+    const currentIsPM = pickerState.hour >= 12;
+    if (currentIsPM === isPM) return;
+    pickerState.hour += isPM ? 12 : -12;
+    updatePickerUI();
+  }
+
+  btnAM.addEventListener("click", () => setPeriod(false));
+  btnPM.addEventListener("click", () => setPeriod(true));
+  displayAmPm.addEventListener("click", () => setPeriod(!(pickerState.hour >= 12)));
+
+  btn12h.addEventListener("click", () => {
+    if (!pickerState.is24h) return;
+    pickerState.is24h = false;
+    btn12h.classList.add("active");
+    btn24h.classList.remove("active");
+    setupDials();
+    syncAnglesFromTime();
+  });
+
+  btn24h.addEventListener("click", () => {
+    if (pickerState.is24h) return;
+    pickerState.is24h = true;
+    btn24h.classList.add("active");
+    btn12h.classList.remove("active");
+    setupDials();
+    syncAnglesFromTime();
+  });
+
+  // モーダルオープン連携
+  timeSlotInput.addEventListener("click", () => {
+    const currentVal = timeSlotInput.value.trim();
+    if (currentVal && currentVal.includes(":")) {
+      const [h, m] = currentVal.split(":").map(Number);
+      pickerState.hour = h;
+      pickerState.minute = Math.round(m / 10) * 10 % 60;
+    }
+    setupDials();
+    syncAnglesFromTime();
+    dialModal.classList.add("active");
+  });
 
   btnDialConfirm.addEventListener("click", () => {
-    timeSlotInput.value = dialTimePreview.textContent;
+    const formatted = `${String(pickerState.hour).padStart(2, "0")}:${String(pickerState.minute).padStart(2, "0")}`;
+    timeSlotInput.value = formatted;
     dialModal.classList.remove("active");
   });
 
@@ -237,7 +365,7 @@ document.addEventListener("DOMContentLoaded", () => {
     dialModal.classList.remove("active");
   });
 
-  // 5. 予約発行（グループ数制限チェック）
+  // 5. 予約発行（グループ上限チェック）
   reservationForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const groupName = groupNameInput.value.trim();
@@ -246,17 +374,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const isRepeat = isRepeatCheckbox.checked;
 
     if (!timeSlot) {
-      alert("希望時間枠を選択してください。");
+      alert("案内時間を選択してください。");
       return;
     }
 
-    // 上限グループ数チェック
     const existingActiveGroups = reservations.filter(
       r => r.timeSlot === timeSlot && r.status !== "cancelled"
     ).length;
 
     if (existingActiveGroups >= configData.maxGroupsPerSlot) {
-      alert(`【満員警告】\n${timeSlot} の枠はすでに上限（${configData.maxGroupsPerSlot}組）に達しているため、発券できません。`);
+      alert(`${timeSlot} の枠はすでに上限（${configData.maxGroupsPerSlot}組）に達しています。`);
       return;
     }
 
@@ -271,14 +398,12 @@ document.addEventListener("DOMContentLoaded", () => {
         checkedInAt: null
       });
 
-      // フォームリセット
       groupNameInput.value = "";
       timeSlotInput.value = "";
       isRepeatCheckbox.checked = false;
       currentPax = 2;
       paxDisplay.textContent = currentPax;
 
-      // チケット受取用QR生成
       const baseUrl = window.location.href.split("?")[0].replace("index.html", "");
       const separator = baseUrl.endsWith("/") ? "" : "/";
       const ticketUrl = `${baseUrl}${separator}ticket.html?id=${docRef.id}`;
@@ -301,7 +426,7 @@ document.addEventListener("DOMContentLoaded", () => {
     qrModal.classList.remove("active");
   });
 
-  // 6. フライト案内板一覧（リアルタイム購読）
+  // 6. 予約一覧（リアルタイム購読・自然な日本語化）
   db.collection("reservations")
     .orderBy("createdAt", "desc")
     .onSnapshot(snapshot => {
@@ -313,7 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   function updateFilterOptions() {
-    boardFilterSlot.innerHTML = `<option value="all">ALL SLOTS</option>`;
+    boardFilterSlot.innerHTML = `<option value="all">すべての時間枠</option>`;
     activeTimeSlots.forEach(slot => {
       const opt = document.createElement("option");
       opt.value = slot;
@@ -327,23 +452,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const filter = boardFilterSlot.value;
 
     const filtered = reservations.filter(r => filter === "all" || r.timeSlot === filter);
-
-    // 時間枠順・作成順でソート
     filtered.sort((a, b) => (a.timeSlot > b.timeSlot ? 1 : -1));
 
     filtered.forEach(res => {
       const tr = document.createElement("tr");
 
-      let statusHtml = '<span class="status-tag status-waiting">WAITING</span>';
+      let statusHtml = '<span class="status-badge status-waiting">待機中</span>';
       if (res.status === "checked_in") {
-        statusHtml = '<span class="status-tag status-checked">CHECKED IN</span>';
+        statusHtml = '<span class="status-badge status-checked">受付済</span>';
       } else if (res.status === "cancelled") {
-        statusHtml = '<span class="status-tag status-cancelled">CANCELLED</span>';
+        statusHtml = '<span class="status-badge status-cancelled">取消</span>';
       }
 
       const typeHtml = res.isRepeat
-        ? '<span class="type-repeat">REPEAT</span>'
-        : '<span style="color:#94a3b8;">FIRST</span>';
+        ? '<span class="type-repeat-badge">再入場</span>'
+        : '<span style="color:#94a3b8;">初回</span>';
 
       let actionHtml = `
         <div style="display:flex;gap:6px;">
@@ -356,7 +479,7 @@ document.addEventListener("DOMContentLoaded", () => {
       tr.innerHTML = `
         <td style="font-weight:bold;color:#38bdf8;">${res.timeSlot}</td>
         <td><strong>${escapeHtml(res.groupName)}</strong></td>
-        <td>${res.count}P</td>
+        <td>${res.count}名</td>
         <td>${typeHtml}</td>
         <td>${statusHtml}</td>
         <td>${actionHtml}</td>
@@ -367,13 +490,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   boardFilterSlot.addEventListener("change", renderFlightBoard);
 
-  // 7. カメラQRスキャナー受付
+  // 7. カメラQRスキャン
   html5QrCode = new Html5Qrcode("qr-reader");
 
   btnStartScan.addEventListener("click", () => {
     btnStartScan.style.display = "none";
     btnStopScan.style.display = "block";
-    scanMessage.textContent = "カメラ読取中...";
+    scanMessage.textContent = "スキャン中...";
 
     const config = { fps: 10, qrbox: { width: 240, height: 240 } };
     html5QrCode.start(
@@ -394,7 +517,7 @@ document.addEventListener("DOMContentLoaded", () => {
       html5QrCode.stop().then(() => {
         btnStartScan.style.display = "block";
         btnStopScan.style.display = "none";
-        scanMessage.textContent = "カメラは停止しています。";
+        scanMessage.textContent = "カメラは停止しています";
       }).catch(err => console.error(err));
     }
   }
@@ -406,24 +529,20 @@ document.addEventListener("DOMContentLoaded", () => {
     openCheckinModal(decodedText.trim());
   }
 
-  // 8. 各種操作のグローバル公開
   window.triggerCheckin = (id) => openCheckinModal(id);
 
   window.triggerCancel = async (id) => {
-    if (confirm("この予約を取り消し（CANCEL）状態にしますか？")) {
+    if (confirm("この予約を取り消しますか？")) {
       try {
-        await db.collection("reservations").doc(id).update({
-          status: "cancelled"
-        });
+        await db.collection("reservations").doc(id).update({ status: "cancelled" });
       } catch (err) {
         alert("取消エラー: " + err.message);
       }
     }
   };
 
-  // 物理削除（テストデータ清掃）
   window.triggerDelete = async (id) => {
-    if (confirm("【完全削除の確認】\nこの予約データをデータベースから完全に消去しますか？\n（元に戻せません）")) {
+    if (confirm("この予約データを完全に削除しますか？")) {
       try {
         await db.collection("reservations").doc(id).delete();
       } catch (err) {
@@ -437,24 +556,24 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const doc = await db.collection("reservations").doc(docId).get();
       if (!doc.exists) {
-        alert("予約データが見つかりません (ID: " + docId + ")");
+        alert("予約データが見つかりません: " + docId);
         resumeScanner();
         return;
       }
 
       const d = doc.data();
-      let statusLabel = "<span style='color:#facc15;font-weight:bold;'>未受付 (WAITING)</span>";
+      let statusLabel = "<span style='color:#facc15;font-weight:bold;'>待機中</span>";
       if (d.status === "checked_in") {
-        statusLabel = "<span style='color:#4ade80;font-weight:bold;'>受付済み (CHECKED IN)</span>";
+        statusLabel = "<span style='color:#4ade80;font-weight:bold;'>受付済</span>";
       } else if (d.status === "cancelled") {
-        statusLabel = "<span style='color:#ef4444;font-weight:bold;'>キャンセル済み (CANCELLED)</span>";
+        statusLabel = "<span style='color:#ef4444;font-weight:bold;'>取消済</span>";
       }
 
       checkinDetails.innerHTML = `
         <p><strong>グループ:</strong> ${escapeHtml(d.groupName)}</p>
-        <p><strong>人数:</strong> ${d.count} 名</p>
-        <p><strong>時間枠:</strong> ${d.timeSlot}</p>
-        <p><strong>種別:</strong> ${d.isRepeat ? "リピート参加" : "初回入場"}</p>
+        <p><strong>人数:</strong> ${d.count}名</p>
+        <p><strong>時間:</strong> ${d.timeSlot}</p>
+        <p><strong>区分:</strong> ${d.isRepeat ? "再入場" : "初回"}</p>
         <p><strong>状態:</strong> ${statusLabel}</p>
       `;
 
@@ -473,7 +592,7 @@ document.addEventListener("DOMContentLoaded", () => {
         status: "checked_in",
         checkedInAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      alert("受付手続きが完了しました！");
+      alert("受付が完了しました");
       checkinModal.classList.remove("active");
       resumeScanner();
     } catch (err) {

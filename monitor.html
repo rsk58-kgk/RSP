@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2年4組 整理券・空き枠状況モニター</title>
+  <title>2年4組 空き状況モニター</title>
   <link rel="stylesheet" href="monitor.css">
 
   <!-- Firebase SDK (compat) -->
@@ -16,28 +16,19 @@
     <header class="monitor-header">
       <div class="header-left">
         <span class="class-tag">2年4組</span>
-        <h1 class="header-title">アトラクション 整理券発券状況</h1>
+        <h1 class="header-title">空き状況</h1>
       </div>
-      <div class="header-right">
-        <div class="clock-label">現在時刻</div>
-        <div id="live-clock" class="live-clock">--:--:--</div>
-      </div>
+      <div id="live-clock" class="live-clock">--:--:--</div>
     </header>
 
-    <div class="guide-banner">
-      <span class="pulse-icon">●</span> 受付にて整理券を発行しております
-    </div>
-
     <main class="monitor-main">
-      <div id="slots-container" class="slots-board">
-        <!-- 枠一覧が動的に展開されます -->
-      </div>
+      <div id="slots-container" class="slots-board"></div>
     </main>
 
     <footer class="monitor-footer">
-      <div class="legend-item"><span class="legend-badge available">空きあり</span> すぐにご案内・発券可能</div>
-      <div class="legend-item"><span class="legend-badge few">残りわずか</span> 残り1組</div>
-      <div class="legend-item"><span class="legend-badge full">満 員</span> 発券終了</div>
+      <div class="legend-item"><span class="legend-badge available">空きあり</span></div>
+      <div class="legend-item"><span class="legend-badge few">残り1組</span></div>
+      <div class="legend-item"><span class="legend-badge full">満員</span></div>
     </footer>
   </div>
 
