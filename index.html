@@ -3,53 +3,77 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>スタッフ管理 | 2年4組予約システム</title>
+  <title>スタッフ管理システム | 2年4組</title>
   <link rel="stylesheet" href="staff.css">
 
-  <!-- Firebase SDK (v10 compat) -->
+  <!-- Firebase SDK (compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <!-- QRCode.js (客端末用受取QR生成) -->
+  <!-- QRCode.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <!-- html5-qrcode (カメラ読取) -->
+  <!-- html5-qrcode -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
   <script src="firebase-config.js"></script>
 </head>
 <body>
-  <header>
-    <h1>2年4組 受付管理システム</h1>
-    <nav class="tabs">
-      <button class="tab-btn active" data-tab="tab-reserve">予約発行</button>
-      <button class="tab-btn" data-tab="tab-scan">カメラ受付</button>
-      <button class="tab-btn" data-tab="tab-list">状況・一覧</button>
+  <header class="staff-header">
+    <div class="header-main">
+      <h1>2年4組 予約・受付フライトコントロール</h1>
+      <a href="monitor.html" target="_blank" class="monitor-link-btn">↗ モニター画面を開く</a>
+    </div>
+    <nav class="staff-tabs">
+      <button class="tab-btn active" data-tab="tab-reserve">発券手続き</button>
+      <button class="tab-btn" data-tab="tab-scan">QR読取受付</button>
+      <button class="tab-btn" data-tab="tab-board">案内板（フライト一覧）</button>
+      <button class="tab-btn" data-tab="tab-settings">システム設定</button>
     </nav>
   </header>
 
-  <main>
-    <!-- タブ1: 予約登録 -->
+  <main class="staff-main">
+    <!-- ① 発券手続き -->
     <section id="tab-reserve" class="tab-content active">
-      <h2>新規予約登録</h2>
+      <h2>新規整理券 発券</h2>
       <form id="reservation-form">
         <div class="form-group">
-          <label for="group-name">グループ名 / 代表者名</label>
-          <input type="text" id="group-name" required placeholder="例: 佐藤グループ">
+          <label>グループ名 / 代表者名</label>
+          <input type="text" id="group-name" required placeholder="例: たかはしグループ">
         </div>
+
         <div class="form-group">
-          <label for="group-count">参加人数</label>
-          <input type="number" id="group-count" min="1" max="15" value="2" required>
+          <label>参加人数（最大4名）</label>
+          <div class="keypad-input-display">
+            <span id="pax-display">2</span> 名
+          </div>
+          <!-- テンキー (1〜4, C) -->
+          <div class="keypad-grid">
+            <button type="button" class="key-btn" data-num="1">1</button>
+            <button type="button" class="key-btn" data-num="2">2</button>
+            <button type="button" class="key-btn" data-num="3">3</button>
+            <button type="button" class="key-btn" data-num="4">4</button>
+            <button type="button" class="key-btn clear" id="btn-clear-keypad">C</button>
+          </div>
         </div>
+
         <div class="form-group">
-          <label for="time-slot">希望時間枠</label>
-          <select id="time-slot" required></select>
+          <label>希望時間枠（10分刻み）</label>
+          <input type="text" id="time-slot-input" readonly required placeholder="タップして時刻を選択">
         </div>
-        <button type="submit" class="btn primary">予約登録 & 整理券QR発行</button>
+
+        <div class="form-group checkbox-group">
+          <label class="toggle-container">
+            <input type="checkbox" id="is-repeat">
+            <span class="toggle-slider"></span>
+            <span class="toggle-label">2回目以降の参加（リピート特典・再挑戦）</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn primary-action">整理券を発券してQRを表示</button>
       </form>
     </section>
 
-    <!-- タブ2: カメラ受付 -->
+    <!-- ② QRカメラ読取 -->
     <section id="tab-scan" class="tab-content">
-      <h2>入場用QRスキャナー</h2>
+      <h2>入場QRコードスキャン</h2>
       <div id="qr-reader-container">
         <div id="qr-reader"></div>
       </div>
@@ -57,43 +81,101 @@
         <button id="btn-start-scan" class="btn success">カメラ起動</button>
         <button id="btn-stop-scan" class="btn danger" style="display:none;">停止</button>
       </div>
-      <div id="scan-message" class="info-text">カメラを起動し、お客さんのチケットQRを読み取ってください</div>
+      <p id="scan-message" class="info-text">カメラを起動し、お客さんのチケット画像を枠内に収めてください。</p>
     </section>
 
-    <!-- タブ3: 空き状況 & 予約一覧 -->
-    <section id="tab-list" class="tab-content">
-      <h2>時間枠ごとの空き状況</h2>
-      <div id="slots-status" class="slots-grid"></div>
-
-      <h2>予約一覧（リアルタイム）</h2>
-      <div class="filter-controls">
-        <label for="filter-slot">時間枠絞り込み:
-          <select id="filter-slot">
-            <option value="all">すべての時間枠</option>
-          </select>
-        </label>
+    <!-- ③ フライト案内板風一覧 -->
+    <section id="tab-board" class="tab-content">
+      <div class="board-header-bar">
+        <h2>DEPARTURES / 呼出・案内状況</h2>
+        <div class="board-filter">
+          <label>枠絞込:
+            <select id="board-filter-slot">
+              <option value="all">ALL SLOTS</option>
+            </select>
+          </label>
+        </div>
       </div>
-      <div class="table-container">
-        <table>
+
+      <div class="flight-board-container">
+        <table class="flight-table">
           <thead>
             <tr>
-              <th>時間枠</th>
-              <th>グループ名</th>
-              <th>人数</th>
-              <th>状態</th>
-              <th>操作</th>
+              <th>TIME</th>
+              <th>GROUP</th>
+              <th>PAX</th>
+              <th>TYPE</th>
+              <th>STATUS</th>
+              <th>ACTION</th>
             </tr>
           </thead>
-          <tbody id="reservation-tbody"></tbody>
+          <tbody id="flight-tbody">
+            <!-- JSで動的生成 -->
+          </tbody>
         </table>
       </div>
     </section>
+
+    <!-- ④ システム設定 -->
+    <section id="tab-settings" class="tab-content">
+      <h2>システム運用設定</h2>
+      <form id="settings-form">
+        <div class="form-group">
+          <label>1枠あたりの最大受付グループ数（上限）</label>
+          <input type="number" id="setting-max-groups" min="1" max="10" required>
+          <small class="help-text">※保存すると、モニターやスタッフ全員に即座に反映されます。</small>
+        </div>
+        <div class="form-group inline-group">
+          <div>
+            <label>開始時刻</label>
+            <input type="text" id="setting-open-time" placeholder="09:30" required>
+          </div>
+          <div>
+            <label>終了時刻</label>
+            <input type="text" id="setting-close-time" placeholder="15:00" required>
+          </div>
+        </div>
+        <button type="submit" class="btn primary-action">設定をFirestoreに保存</button>
+      </form>
+    </section>
   </main>
 
-  <!-- モーダル: 整理券受取QR -->
+  <!-- Dual Dial Time Picker モーダル -->
+  <div id="dial-modal" class="modal">
+    <div class="modal-content dial-modal-content">
+      <h3>希望時間を選択（10分刻み）</h3>
+      <div class="dial-time-display" id="dial-time-preview">09:30</div>
+
+      <div class="dial-container">
+        <!-- 時ダイヤル -->
+        <div class="dial-block">
+          <div class="dial-label">HOUR (時)</div>
+          <div class="dial-wheel" id="wheel-hour">
+            <div class="dial-hand" id="hand-hour"></div>
+            <!-- 目盛りはJSで配置 -->
+          </div>
+        </div>
+        <!-- 分ダイヤル (10分刻み: 00, 10, 20, 30, 40, 50) -->
+        <div class="dial-block">
+          <div class="dial-label">MIN (分: 10分刻み)</div>
+          <div class="dial-wheel" id="wheel-minute">
+            <div class="dial-hand" id="hand-minute"></div>
+            <!-- 目盛りはJSで配置 -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="btn-dial-confirm" class="btn primary">決定</button>
+        <button type="button" id="btn-dial-cancel" class="btn">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 発券QRモーダル -->
   <div id="qr-modal" class="modal">
     <div class="modal-content">
-      <h3>お客さんのスマホで読み取ってください</h3>
+      <h3>お客さんにこのQRを読み取ってもらってください</h3>
       <p class="sub-text">読み取るとスマホに整理券画像が表示されます</p>
       <div id="modal-qrcode"></div>
       <p id="modal-ticket-url" class="ticket-url-text"></p>
@@ -101,14 +183,14 @@
     </div>
   </div>
 
-  <!-- モーダル: 受付確認 -->
+  <!-- 受付確認モーダル -->
   <div id="checkin-modal" class="modal">
     <div class="modal-content">
       <h3>受付確認</h3>
       <div id="checkin-details" class="details-box"></div>
       <div class="modal-actions">
-        <button id="btn-confirm-checkin" class="btn primary">受付完了にする</button>
-        <button id="btn-cancel-checkin" class="btn">戻る</button>
+        <button id="btn-confirm-checkin" class="btn success">受付を完了する</button>
+        <button id="btn-cancel-checkin" class="btn">閉じる</button>
       </div>
     </div>
   </div>

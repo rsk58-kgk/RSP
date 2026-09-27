@@ -17,7 +17,7 @@ html, body {
 
 #ticket-wrapper {
   width: 100%;
-  max-width: 460px;
+  max-width: 480px;
   padding: 16px;
   display: flex;
   justify-content: center;
@@ -29,15 +29,14 @@ html, body {
   width: 100%;
   height: auto;
   border-radius: 16px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
   display: block;
   user-select: auto !important;
   -webkit-user-select: auto !important;
-  -webkit-touch-callout: default !important; /* iOSで長押しメニューを強制許可 */
+  -webkit-touch-callout: default !important; /* iOSで長押し保存を完全許可 */
   pointer-events: auto !important;
 }
 
-/* 一時QRコード要素（非表示かつレイアウト計算を成立させる） */
 .offscreen-qr {
   position: fixed;
   left: -9999px;
@@ -48,7 +47,6 @@ html, body {
   pointer-events: none;
 }
 
-/* ローディング画面 */
 .loader {
   position: fixed;
   top: 0;
@@ -66,8 +64,8 @@ html, body {
 }
 
 .spinner {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border: 4px solid rgba(255, 255, 255, 0.15);
   border-top-color: #38bdf8;
   border-radius: 50%;

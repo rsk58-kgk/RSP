@@ -1,4 +1,4 @@
-// Firebase設定情報（プロジェクトの設定値に書き換えてください）
+// Firebaseプロジェクト設定（ご自身のコンソールの値に置き換えてください）
 const firebaseConfig = {
   apiKey: "AIzaSyAyiM0bkh3D1zTDok7wjYeipFSg7jdGOV4",
   authDomain: "rsk582027.firebaseapp.com",
@@ -14,23 +14,31 @@ if (!firebase.apps || !firebase.apps.length) {
 }
 const db = firebase.firestore();
 
-// 企画設定
+// 企画共通設定
 const APP_CONFIG = {
   className: "2年4組",
   attractionName: "文化祭アトラクション",
   get fullTitle() {
     return `${this.className} ${this.attractionName}`;
   },
-  capacityPerSlot: 15, // 時間枠ごとの定員人数
-  timeSlots: [
-    "09:30 - 10:00",
-    "10:00 - 10:30",
-    "10:30 - 11:00",
-    "11:00 - 11:30",
-    "11:30 - 12:00",
-    "13:00 - 13:30",
-    "13:30 - 14:00",
-    "14:00 - 14:30",
-    "14:30 - 15:00"
-  ]
+  defaultMaxGroupsPerSlot: 3, // 1枠あたりのデフォルト上限グループ数
+  timeSlotDurationMinutes: 10, // 10分刻み
+  defaultOpenTime: "09:30",
+  defaultCloseTime: "15:00",
+  // 10分刻みの時間枠生成ヘルパー
+  generateTimeSlots(startStr = "09:30", endStr = "15:00") {
+    const slots = [];
+    const [startH, startM] = startStr.split(":").map(Number);
+    const [endH, endM] = endStr.split(":").map(Number);
+    let current = startH * 60 + startM;
+    const end = endH * 60 + endM;
+
+    while (current < end) {
+      const h = Math.floor(current / 60).toString().padStart(2, "0");
+      const m = (current % 60).toString().padStart(2, "0");
+      slots.push(`${h}:${m}`);
+      current += this.timeSlotDurationMinutes;
+    }
+    return slots;
+  }
 };
